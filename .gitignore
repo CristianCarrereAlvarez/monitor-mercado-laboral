@@ -1,0 +1,12 @@
+# Bytecode
+__pycache__/
+*.py[cod]
+
+# Colab
+.ipynb_checkpoints/
+
+# Datos: viven en Google Drive, nunca en el repo (ver CLAUDE.md §3).
+# Si aterrizan en /content/repo sin trackear, el git pull siguiente aborta
+# con "untracked working tree file would be overwritten".
+crudo/
+maestras/
