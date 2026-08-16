@@ -378,15 +378,53 @@ era "el corte cae en un vacío, así que su valor exacto no cambia nada".
 Ahora sí cambia: mover el corte a 101 sumaría 789 pares aviso×carrera a
 las menciones específicas (+3,9%); bajarlo a 25 restaría 283 (−1,4%).
 
-Y los dos criterios ya no coinciden. El del hueco pediría subirlo a
-algo entre 101 y 503; el de fondo dice que un aviso que declara 100 de
-528 carreras no informa nada sobre qué carrera busca y llamarlo
-específico sería peor. **Pendiente: mirar los 19 avisos de 31–100 antes
-de decidir.** Si son concursos multidisciplinarios legítimos el corte
-debe subir; si son empleadores tildando media taxonomía, 30 está bien.
+**Los 29 avisos revisados uno por uno: ninguno es un concurso
+multidisciplinario.** Son avisos comunes con un cargo concreto —
+"Vendedor E-Commerce" con 33 carreras, "Técnico Tratamiento de Agua"
+con 43, "Supervisor Terreno Exploraciones" con 100. Empleadores
+ensanchando el embudo, no instituciones convocando a varias
+disciplinas. O sea: **el umbral no debe subir a 101.**
 
-Mientras tanto queda en 30. Cambiarlo sin mirar sería peor, y no se
-pierde nada: el entero está guardado y el corte se decide en análisis.
+**Y el tamaño no es un estadístico suficiente.** Cruzando los conjuntos
+declarados por empleador (avisos de 20 a 503 carreras, `fuente =
+declarada`):
+
+| empleador | avisos | conjuntos distintos | tamaños |
+|---|---:|---:|---|
+| Salazar Israel | 5 | **1** | 22 ×5 |
+| Autoplanet | 5 | 4 | 22, 29, 29, 31, 31 |
+| AMERICAR | 4 | **1** | 33 ×4 |
+| Panorama | 3 | **1** | 20 ×3 |
+| Aramark | 3 | **1** | 30 ×3 |
+| PORTILLO | 2 | **1** | 33 ×2 |
+| ECRGROUP | 2 | **1** | 49 ×2 |
+| Universidad Mayor | 2 | 2 | 23, 25 |
+| ME ELECMETAL | 2 | 2 | 24, 29 |
+| Consultor Selección | 2 | 2 | 26, 59 |
+| Alpes Talent Consulting | 2 | 2 | 23, 28 |
+
+Siete de doce empleadores repiten **un conjunto idéntico** en todos sus
+avisos: es un perfil guardado, no una decisión por vacante. Pero esas
+plantillas están en 20, 21, 22, 30, 33 y 49 — **a ambos lados de
+cualquier corte**. Salazar Israel (22) cuenta hoy como específico y
+AMERICAR (33) como genérico, y hacen exactamente lo mismo.
+
+El caso decisivo es **Universidad Mayor: 2 avisos, 2 conjuntos
+distintos** de 23 y 25. El concurso legítimo se comporta distinto de la
+plantilla —cada uno trae su propia lista— pero cae en el mismo rango de
+tamaño. Ningún valor del umbral los separa.
+
+Autoplanet marca el límite de la idea: 5 avisos, 4 conjuntos, tamaños
+22–31. No es plantilla rígida sino un conjunto base que editan. **La
+genericidad es gradual, no binaria.**
+
+**Decisión: queda en 30.** No porque esté bien fundado sino porque
+ninguna alternativa es mejor y la población en disputa es el 0,65% de
+los avisos (59 con 21 carreras o más, sobre 9.125). Lo que corresponde
+no es afinar el corte sino **guardar la señal**: un hash del conjunto
+declarado y cuántos avisos lo comparten identifican a Bresler y a
+AMERICAR sin umbral, y dejan afuera a Universidad Mayor. Lección 4
+otra vez — guardar la cantidad, no el booleano.
 
 ### 5.3 `estadoOferta`: la búsqueda devuelve avisos cerrados
 
@@ -838,10 +876,13 @@ compatibilidad; conviene retirarlas en una limpieza posterior.
   legítimamente multidisciplinario — el falso positivo de §5.8.
 
   **Con las 10 áreas el hueco se pobló** (§5.2): la distribución es
-  continua de 0 a 100 y el único salto queda entre 100 y 504. El umbral
-  sigue en 30 pero ahora es una decisión sustantiva, no una arbitraria
-  sin consecuencias. Está pendiente mirar los 19 avisos de 31–100 para
-  resolverlo.
+  continua de 0 a 100 y el único salto queda entre 100 y 504. Revisados
+  los 29 avisos, ninguno es un concurso multidisciplinario, así que el
+  corte no debe subir. Pero las plantillas de empleador aparecen entre
+  20 y 49, a ambos lados de cualquier corte, y un concurso legítimo
+  (Universidad Mayor) cae en el mismo rango: **el tamaño no separa los
+  dos casos.** Queda en 30 por falta de algo mejor, sabiendo que es
+  arbitrario y que afecta al 0,65% de los avisos.
 - `instituciones.n_avisos_especificos` — **usa el umbral de carreras
   como proxy y es imperfecto.** Un aviso con 19 carreras declaró 35 de
   56 instituciones y cuenta como específico. `aviso_institucion.csv`
