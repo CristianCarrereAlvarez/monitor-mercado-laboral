@@ -358,11 +358,35 @@ Distribución de `n_carreras_declaradas` en Humanidades:
 No hay nada entre 26 y 503. `UMBRAL_AVISO_GENERICO = 20` funciona;
 cualquier valor entre 26 y 503 da lo mismo.
 
-**Revisar con el corpus completo.** Los avisos genéricos pasaron de 10 a
-**29** al correr las 10 áreas (§5.9). Diecinueve son nuevos y no está
-medido dónde caen: si alguno se ubica entre 26 y 503, el hueco que
-justifica el umbral dejó de existir. El bloque 1 de `control.py` avisa
-cuando un valor queda a menos de 3× el corte.
+**Con el corpus completo el hueco desapareció.** Medido sobre los 9.125
+avisos de agosto 2026:
+
+```
+21→3  22→9  23→4  24→1  25→3     antes 25 era el máximo legítimo
+26→3  28→1  29→3  30→3           hoy cuentan como ESPECÍFICOS
+31→2  32→2  33→7  41→1  43→1
+44→1  47→1  49→2  59→1  100→1    hoy cuentan como GENÉRICOS
+504→10                           Bresler
+```
+
+La distribución es **continua de 0 a 100**. El único salto real que
+queda está **entre 100 y 504**. Los 29 avisos con más de 30 carreras
+caen todos dentro del viejo hueco de 26–503.
+
+Esto no invalida el umbral, invalida su **justificación**. El argumento
+era "el corte cae en un vacío, así que su valor exacto no cambia nada".
+Ahora sí cambia: mover el corte a 101 sumaría 789 pares aviso×carrera a
+las menciones específicas (+3,9%); bajarlo a 25 restaría 283 (−1,4%).
+
+Y los dos criterios ya no coinciden. El del hueco pediría subirlo a
+algo entre 101 y 503; el de fondo dice que un aviso que declara 100 de
+528 carreras no informa nada sobre qué carrera busca y llamarlo
+específico sería peor. **Pendiente: mirar los 19 avisos de 31–100 antes
+de decidir.** Si son concursos multidisciplinarios legítimos el corte
+debe subir; si son empleadores tildando media taxonomía, 30 está bien.
+
+Mientras tanto queda en 30. Cambiarlo sin mirar sería peor, y no se
+pierde nada: el entero está guardado y el corte se decide en análisis.
 
 ### 5.3 `estadoOferta`: la búsqueda devuelve avisos cerrados
 
@@ -806,15 +830,18 @@ compatibilidad; conviene retirarlas en una limpieza posterior.
   Efecto medido en Humanidades: la cobertura del top 50 pasó de 11,7% a
   83,3%.
 
-  **Por qué se subió a 30.** La distribución es bimodal con un hueco
-  grande: el máximo legítimo observado es 25 y el siguiente valor es
-  504. Cualquier corte dentro del hueco da el mismo resultado, pero 20
-  caía fuera y marcaba como genérico el aviso `6102956` (Universidad
-  Mayor, 25 carreras), un concurso académico legítimamente
-  multidisciplinario — el falso positivo de §5.8. Medido sobre Derecho:
-  pasar de 20 a 30 cambia solo ese aviso (25 carreras suben +1 en
-  `n_avisos_especificos`, nada más). Revisar el corte si aparece un área
-  que puebla el hueco entre 26 y 503.
+  **Por qué se subió a 30, y por qué ese argumento ya no vale.** Con dos
+  áreas la distribución era bimodal con un hueco grande: máximo legítimo
+  25, siguiente valor 504. Cualquier corte dentro del hueco daba el
+  mismo resultado, pero 20 caía fuera y marcaba como genérico el aviso
+  `6102956` (Universidad Mayor, 25 carreras), un concurso académico
+  legítimamente multidisciplinario — el falso positivo de §5.8.
+
+  **Con las 10 áreas el hueco se pobló** (§5.2): la distribución es
+  continua de 0 a 100 y el único salto queda entre 100 y 504. El umbral
+  sigue en 30 pero ahora es una decisión sustantiva, no una arbitraria
+  sin consecuencias. Está pendiente mirar los 19 avisos de 31–100 para
+  resolverlo.
 - `instituciones.n_avisos_especificos` — **usa el umbral de carreras
   como proxy y es imperfecto.** Un aviso con 19 carreras declaró 35 de
   56 instituciones y cuenta como específico. `aviso_institucion.csv`
