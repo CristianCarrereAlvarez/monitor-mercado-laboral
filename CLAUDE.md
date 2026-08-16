@@ -77,6 +77,14 @@ produjeron están en §5; el código no volvió a hacer falta.
 
 ## 3. Entorno
 
+> **AGOSTO 2026 — Colab ya no sirve para capturar.** Akamai bloquea los
+> rangos de datacenter: desde Colab, `trabajando.cl` devuelve **403 en
+> todo, incluida la portada**. Verificado con un experimento limpio —
+> mismo sitio, mismo minuto, la portada carga desde una conexión
+> doméstica y da 403 desde Colab. La captura hay que correrla desde una
+> máquina con IP residencial. Consolidación y análisis siguen andando en
+> Colab sin problema: no tocan la red. Ver §4.
+
 Se trabaja en **Google Colab**, con el código en GitHub y los datos en
 Google Drive.
 
@@ -144,6 +152,36 @@ GET /api/ofertas/{idOferta}
 ```
 
 `/api/empresas` **no existe** (404). Verificado en v7.
+
+### El navegador es opcional (y el bloqueo de Akamai)
+
+Playwright se usaba solo para establecer cookies; las llamadas siempre
+fueron HTTP. **Medido en agosto 2026: la API responde 200 a un `curl`
+pelado desde una IP residencial, sin cookies de ningún tipo.** El
+navegador nunca fue necesario para el contenido.
+
+Por eso `scraper_v9.py` tiene dos modos:
+
+```
+python scraper_v9.py "Salud"                  # navegador, si está
+python scraper_v9.py "Salud" --sin-navegador  # urllib, sin dependencias
+```
+
+Si Playwright falta o falla al lanzar, cae solo al modo directo y lo
+avisa. **Chromium no corre en macOS 12** — Playwright 1.62 responde
+`does not support chromium on mac12` — así que en un Mac Monterey el
+modo directo no es una comodidad, es el único camino.
+
+**El bloqueo.** Desde Colab, todo el sitio devuelve 403 con la página de
+denegación de Akamai (`errors.edgesuite.net`, "Access Denied", con
+Reference #). No hay `retry-after` ni desafío: es una denegación seca por
+reputación de IP. No se arregla con headers, ni con cookies, ni bajando
+`CONCURRENCIA`, ni esperando — nada de eso cambia la IP de origen, que es
+lo único que Akamai mira.
+
+Corolario operativo: la captura se corre desde una red doméstica, con las
+pausas puestas. Montar proxies o falsear huellas para saltar la regla es
+otra cosa y no se hace.
 
 ### Campos del detalle (51 claves) — lo relevante
 
@@ -686,6 +724,10 @@ antes.
 8. **Deduplicar por empleador antes de leer cualquier agregado.** En
    Derecho un empleador es el 35% del área y su boilerplate institucional
    es lo que la generó. El conteo de avisos mide publicación, no demanda.
-9. **Un catálogo obtenido de un solo caso raro es una muestra, no un
+9. **Fallar en silencio es peor que fallar.** Seis corridas anunciaron
+   "CAPTURA COMPLETA" con cero avisos mientras Akamai las rechazaba, y
+   el problema se descubrió por casualidad. Un pipeline tiene que
+   distinguir "no encontré nada" de "me rechazaron" y decirlo fuerte.
+10. **Un catálogo obtenido de un solo caso raro es una muestra, no un
    censo.** Las 504 de Bresler parecían el universo; una sola corrida
    más agregó dos nombres. La taxonomía se acumula, no se congela.
