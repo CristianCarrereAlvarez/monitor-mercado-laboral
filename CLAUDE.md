@@ -53,14 +53,25 @@ se cambia `consolidar.py` y se reconsolida. Nunca se re-scrapea por eso.
 
 ### Estado de los archivos
 
+**GitHub es el repositorio fundamental.** Todo el código vive ahí y
+Colab trabaja clonando desde ahí. Lo único que no se versiona son los
+datos: `crudo/` y `maestras/` viven en Drive y están en `.gitignore`.
+
+Lo que hay en el repo, y nada más:
+
 | archivo | estado |
 |---|---|
-| `scraper_v9.py` | vigente |
-| `consolidar.py` | vigente |
-| `carreras_sies_2026.py` | vigente — lo usa v9, no consolidar |
-| `scraper_v7.py` | obsoleto, conservar como referencia histórica |
-| `scraper_v8.py` | nunca se corrió; superado por v9 |
-| `sonda_detalle.py`, `sonda_confidencial.py` | de un solo uso, ya cumplieron |
+| `SMLab.ipynb` | **punto de entrada**; el notebook de Colab que orquesta todo |
+| `scraper_v9.py` | vigente — captura |
+| `consolidar.py` | vigente — derivación |
+| `carreras_sies_2026.py` | vigente — catálogo + índices; lo usan v9 y consolidar |
+| `CLAUDE.md` | este documento |
+| `.gitignore` | excluye bytecode, checkpoints de Colab, `crudo/` y `maestras/` |
+
+Borrados del repo (agosto 2026), por si aparecen mencionados en notas
+viejas: `scraper_v7.py`, `scraper_v8.py`, `sonda_detalle.py`,
+`sonda_confidencial.py`. **No se conservaron.** Los hallazgos que
+produjeron están en §5; el código no volvió a hacer falta.
 
 ---
 
@@ -68,6 +79,13 @@ se cambia `consolidar.py` y se reconsolida. Nunca se re-scrapea por eso.
 
 Se trabaja en **Google Colab**, con el código en GitHub y los datos en
 Google Drive.
+
+El notebook `SMLab.ipynb` está **en el repo**, no suelto en Drive: se
+abre desde GitHub (hay un badge de Colab en la primera celda) y se
+versiona como cualquier otro archivo. Está organizado en cuatro
+secciones —preparación, captura, consolidación, verificaciones— con el
+orden de uso escrito adentro. Se guarda **con las salidas limpias**:
+sin outputs no hay fuga de datos ni diffs enormes.
 
 - Código: `/content/repo` (clon efímero, se re-clona en cada sesión)
 - Datos: `/content/drive/MyDrive/monitor_mercado_laboral` (persistente)
@@ -100,6 +118,17 @@ ver progreso en vivo.
 que después se suben a GitHub, el `git pull` aborta con *"untracked
 working tree file would be overwritten"*. Solución: borrar el archivo
 local antes del pull, o re-clonar limpio.
+
+**Trampa peor, porque es silenciosa: el directorio de trabajo.**
+`scraper_v9.py` tiene `DIR_CRUDO = "crudo"`, relativo al cwd. Corrido
+desde `/content/repo` —que es lo natural después de un `os.chdir` para
+clonar— el crudo aterriza en el clon efímero: se pierde al reiniciar la
+sesión, `.gitignore` lo oculta de `git status` y **nada avisa**. El
+síntoma aparece después: se consolida y el área recién corrida no está,
+porque `consolidar.py` leyó el `crudo/` de Drive.
+
+Por eso toda celda de captura y de consolidación en `SMLab.ipynb`
+empieza con `%cd $DATOS`. No es cosmético.
 
 ---
 
