@@ -271,9 +271,64 @@ CARRERAS_POR_AREA = {
 
 }
 
+# ══════════════════════════════════════════════════════════
+# ÍNDICES INVERTIDOS — derivados, no editar a mano
+# ══════════════════════════════════════════════════════════
+#
+# El scraper busca por las KEYS y las persiste en cada registro crudo
+# (campo `terminos`). Estos índices permiten traducir ese término al
+# nombre SIES y al área SIES, sin trabajo manual y con cobertura del
+# 100% de los avisos capturados.
+#
+# ALCANCE — leer antes de usar:
+#   Un término es lo que YO busqué, no lo que el aviso declara. El
+#   buscador de trabajando.com devuelve resultados tangenciales, así que
+#   esta ruta sobre-atribuye. Es una señal de contexto, no una
+#   clasificación del aviso. La atribución fuerte sigue siendo la
+#   homologación manual de `carrera_trabajando` → SIES.
+#
+#   De los 199 pares, solo 16 traducen algo distinto a la identidad; el
+#   resto es término == nombre SIES. El aporte real de esta ruta es
+#   normalizar esos 16 y adjuntar el área SIES, no "descubrir" nombres.
+
+TERMINO_A_SIES = {}    # término de búsqueda → nombre SIES canónico
+TERMINO_A_AREAS = {}   # término de búsqueda → tupla de áreas SIES
+CONFLICTOS_TERMINO = []  # término presente en 2+ áreas con SIES distinto
+
+for _area, _carreras in CARRERAS_POR_AREA.items():
+    for _termino, _sies in _carreras.items():
+        if _termino in TERMINO_A_SIES and TERMINO_A_SIES[_termino] != _sies:
+            CONFLICTOS_TERMINO.append(
+                (_termino, TERMINO_A_SIES[_termino], _sies))
+        TERMINO_A_SIES.setdefault(_termino, _sies)
+        TERMINO_A_AREAS.setdefault(_termino, set()).add(_area)
+
+TERMINO_A_AREAS = {t: tuple(sorted(a)) for t, a in TERMINO_A_AREAS.items()}
+
+del _area, _carreras, _termino, _sies
+
+
 if __name__ == "__main__":
     total = sum(len(v) for v in CARRERAS_POR_AREA.values())
     print(f"Áreas: {len(CARRERAS_POR_AREA)}")
     print(f"Carreras: {total}")
     for area, carreras in CARRERAS_POR_AREA.items():
         print(f"  {len(carreras):3d}  {area}")
+
+    print(f"\nÍndice invertido")
+    print(f"  términos únicos       : {len(TERMINO_A_SIES)}")
+    print(f"  nombres SIES distintos: "
+          f"{len(set(TERMINO_A_SIES.values()))}")
+    multi = [t for t, a in TERMINO_A_AREAS.items() if len(a) > 1]
+    print(f"  términos en 2+ áreas  : {len(multi)}")
+    for t in multi:
+        print(f"      {t}  →  {', '.join(TERMINO_A_AREAS[t])}")
+    print(f"  conflictos SIES       : {len(CONFLICTOS_TERMINO)}")
+    for t, a, b in CONFLICTOS_TERMINO:
+        print(f"      {t}: {a!r} vs {b!r}")
+
+    dif = [(t, s) for t, s in TERMINO_A_SIES.items() if t != s]
+    print(f"\n  Pares con traducción real (término != SIES): {len(dif)}")
+    for t, s in sorted(dif):
+        print(f"      {t}")
+        print(f"        → {s}")

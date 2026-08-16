@@ -406,6 +406,7 @@ correr las veces que sea.
 |---|---|---|
 | `avisos.csv` | 1 fila por aviso | `aviso_id` |
 | `aviso_carrera.csv` | aviso × carrera declarada | compuesta |
+| `aviso_termino.csv` | aviso × término de búsqueda | compuesta |
 | `aviso_habilidad.csv` | aviso × habilidad | compuesta |
 | `aviso_institucion.csv` | aviso × institución | compuesta |
 | `empresas.csv` | 1 fila por empresa | `empresa_id` |
@@ -448,12 +449,57 @@ calidad_duracion, censurado
 Mezclarlas sesga la mediana hacia arriba. El resumen de
 `consolidar.py` ya las separa.
 
+### Ruta A — término de búsqueda → SIES
+
+`carreras_sies_2026.py` expone `TERMINO_A_SIES` y `TERMINO_A_AREAS`,
+índices invertidos derivados del propio catálogo. `consolidar.py` los
+importa (import blando: si el módulo no está, las columnas quedan vacías
+y **avisa en pantalla**, no falla en silencio) y produce:
+
+- en `avisos.csv`: `sies_por_termino`, `n_sies_por_termino`,
+  `areas_sies_por_termino`, `n_terminos_sin_mapeo`
+- la tabla `aviso_termino.csv` (aviso × término, con `carrera_sies`,
+  `areas_sies`, `mapeado`)
+
+**LEER ANTES DE USAR: esto sobre-atribuye por diseño.** El término es lo
+que se buscó, no lo que el aviso declara. En Derecho los 342 avisos
+quedan con `sies_por_termino = "Derecho"`, incluidos los 120 de
+Fundación Integra que son de salas cuna. Con el ~82% de falsos positivos
+medido en §5.8, la columna es **señal de contexto, no clasificación**.
+La atribución fuerte sigue siendo la homologación manual de
+`carrera_trabajando` → SIES.
+
+Qué aporta de verdad: **solo 16 de los 199 pares traducen algo distinto
+a la identidad.** El valor está en normalizar esos 16 y en adjuntar el
+área SIES, que es más principiada que `nombreArea` de la API (que
+describe al empleador — ver §5.8).
+
+`n_terminos_sin_mapeo` sirve como detector de deriva: si el catálogo se
+edita después de una corrida, los términos viejos del crudo dejan de
+mapear y el número deja de ser 0.
+
+**Redundancia conocida:** `aviso_termino.csv` supersede las filas
+`fuente == 'keyword_only'` de `aviso_carrera.csv` (verificado:
+subconjunto estricto, 151 ⊂ 342 en Derecho). Se dejaron por
+compatibilidad; conviene retirarlas en una limpieza posterior.
+
 ### Filtros de genericidad
 
 - `carreras_trabajando.n_avisos_especificos` — cuenta solo avisos con
-  `n_carreras_declaradas <= UMBRAL_AVISO_GENERICO` (20). Es el orden
-  correcto para priorizar homologación. Efecto medido en Humanidades:
-  la cobertura del top 50 pasó de 11,7% a 83,3%.
+  `n_carreras_declaradas <= UMBRAL_AVISO_GENERICO` (**30** desde agosto
+  2026; antes 20). Es el orden correcto para priorizar homologación.
+  Efecto medido en Humanidades: la cobertura del top 50 pasó de 11,7% a
+  83,3%.
+
+  **Por qué se subió a 30.** La distribución es bimodal con un hueco
+  grande: el máximo legítimo observado es 25 y el siguiente valor es
+  504. Cualquier corte dentro del hueco da el mismo resultado, pero 20
+  caía fuera y marcaba como genérico el aviso `6102956` (Universidad
+  Mayor, 25 carreras), un concurso académico legítimamente
+  multidisciplinario — el falso positivo de §5.8. Medido sobre Derecho:
+  pasar de 20 a 30 cambia solo ese aviso (25 carreras suben +1 en
+  `n_avisos_especificos`, nada más). Revisar el corte si aparece un área
+  que puebla el hueco entre 26 y 503.
 - `instituciones.n_avisos_especificos` — **usa el umbral de carreras
   como proxy y es imperfecto.** Un aviso con 19 carreras declaró 35 de
   56 instituciones y cuenta como específico. `aviso_institucion.csv`
@@ -495,8 +541,10 @@ que viene exacta de la API en cada aviso.
 Reanudable: si se corta, relanzar el mismo comando.
 
 **2. Homologación carreras trabajando → SIES.** Es el cuello de botella
-real y **no depende de correr más áreas** — las 504 ya están. Diseño
-acordado, aún no implementado:
+real y **no depende de correr más áreas** — las 504 ya están. Sigue
+pendiente: la ruta A (§6) no la reemplaza, porque va desde el término
+buscado y no desde lo que el aviso declara. Diseño acordado, aún no
+implementado:
 
 ```
 homologacion_carreras.csv
@@ -576,6 +624,12 @@ antes.
   eso todo es reanudable.
 - **Los avisos de Bresler reaparecen en cada área.** Es correcto:
   `aviso_id` los deduplica y `areas_scraping` acumula dónde salieron.
+- **El catálogo tiene 199 carreras pero 198 términos únicos.**
+  `"Ingeniería en Geomensura y Cartografía"` está en Ciencias Básicas y
+  en Tecnología con el mismo nombre SIES (cero conflictos). Las dos
+  corridas van a buscar el mismo término y traer los mismos candidatos;
+  `aviso_id` los deduplica. Se detecta con
+  `python carreras_sies_2026.py`.
 - **v7 tardó 42 min en Administración.** v9 debería ser menos por la
   concurrencia en la fase de detalle, pero la búsqueda sigue siendo
   secuencial. No medido en un área grande.
