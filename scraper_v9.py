@@ -90,6 +90,19 @@ BASE       = "https://www.trabajando.cl"
 API_SEARCH = f"{BASE}/api/searchjob"
 API_DETAIL = BASE + "/api/ofertas/{id}"
 
+class CapturaAbortada(Exception):
+    """Corta la corrida con un código de salida propio.
+
+    No se usa sys.exit() adentro de la corrutina: bajo nest_asyncio eso
+    deja un SystemExit sin recoger y estampa veinte líneas de traceback
+    justo después del mensaje de error, que es lo contrario de lo que se
+    busca. Se propaga esta y __main__ traduce a código de salida."""
+
+    def __init__(self, codigo):
+        super().__init__(f"captura abortada (código {codigo})")
+        self.codigo = codigo
+
+
 USER_AGENT = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
               'AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36')
 
@@ -176,6 +189,22 @@ async def pausa(rango):
 # FASE 1 — BÚSQUEDA (candidatos)
 # ══════════════════════════════════════════════════════════
 
+def clasificar_error(e):
+    """Etiqueta corta para el diagnóstico. Un fallo de red local y un
+    rechazo del servidor no son lo mismo y no se deben reportar igual."""
+    txt = str(e)
+    if 'CERTIFICATE_VERIFY_FAILED' in txt or 'SSLCertVerification' in txt:
+        return 'SSL_CERT'
+    if 'nodename nor servname' in txt or 'Name or service not known' in txt \
+            or 'Temporary failure in name resolution' in txt:
+        return 'DNS'
+    if 'timed out' in txt.lower() or 'TimeoutError' in type(e).__name__:
+        return 'TIMEOUT'
+    if 'Connection refused' in txt or 'Network is unreachable' in txt:
+        return 'SIN_RED'
+    return type(e).__name__
+
+
 async def buscar_termino(req, termino, idx, total):
     """(avisos, fallo). `fallo` es None si la búsqueda llegó bien al final;
     si no, describe por qué se cortó. Un término sin resultados NO es un
@@ -205,7 +234,7 @@ async def buscar_termino(req, termino, idx, total):
             await pausa(PAUSA_BUSQUEDA)
         except Exception as e:
             print(f"    error pág {pagina}: {e}")
-            fallo = f"{type(e).__name__}"
+            fallo = clasificar_error(e)
             break
     print(f"    → {len(avisos)}")
     return avisos, fallo
@@ -279,26 +308,54 @@ async def capturar(req, area, terminos, path, hechos, fecha, periodo):
     # anunciando "CAPTURA COMPLETA" con cero avisos en los dos casos.
     if fallos and not listado:
         motivos = sorted({f for _, f in fallos})
+        red = [m for m in motivos if not m.startswith('HTTP')]
+        uno  = len(fallos) == 1
+        sust = "término falló" if uno else "términos fallaron"
         print(f"\n{'='*64}")
         print(f"  ⛔  CAPTURA ABORTADA — {area}")
         print(f"{'='*64}")
-        uno = len(fallos) == 1
-        sust = "término falló" if uno else "términos fallaron"
         print(f"  {len(fallos)} de {len(terminos)} {sust} y no hay ni un")
-        print(f"  candidato. Esto NO es un área sin avisos: es un rechazo")
-        print(f"  del sitio.")
-        print(f"  Motivos observados: {', '.join(motivos)}")
-        if any(f.endswith('403') for f in motivos):
+        print(f"  candidato. Esto NO es un área sin avisos.")
+        print(f"  Motivos: {', '.join(motivos)}")
+        print()
+
+        # Distinguir "el servidor me rechazó" de "no salí de mi máquina".
+        # Meter los dos en la misma bolsa fue un error de la v9 inicial:
+        # decía "rechazo del sitio" ante un fallo de TLS local.
+        if 'SSL_CERT' in red:
+            print(f"  Es un problema LOCAL de certificados, no del sitio:")
+            print(f"  tu Python no pudo verificar la cadena TLS. Pasa con")
+            print(f"  el Python de python.org en macOS, que no usa el")
+            print(f"  llavero del sistema. Se arregla una sola vez:")
             print()
-            print(f"  Un 403 en todos los términos suele ser bloqueo por IP.")
-            print(f"  Akamai deniega rangos de datacenter — Colab entre")
-            print(f"  ellos — con 403 hasta en la portada. Comprobalo")
-            print(f"  abriendo {BASE} en un navegador normal: si carga ahí")
-            print(f"  y acá no, es la IP. Correr desde una red doméstica.")
+            print(f"      /Applications/Python\\ 3.x/Install\\ Certificates.command")
+            print()
+            print(f"  o bien:")
+            print(f"      python3 -m pip install --upgrade certifi")
+            print(f"      export SSL_CERT_FILE=\"$(python3 -m certifi)\"")
+        elif 'DNS' in red or 'SIN_RED' in red:
+            print(f"  No hubo conexión: no se resolvió el nombre o la red")
+            print(f"  no responde. Revisá tu conexión antes de reintentar.")
+        elif 'TIMEOUT' in red:
+            print(f"  Todas las peticiones expiraron. Puede ser tu red o el")
+            print(f"  sitio muy lento. Reintentá más tarde.")
+        elif red:
+            print(f"  Los fallos son de red local, no respuestas del sitio.")
+            print(f"  El servidor no llegó a contestar.")
+        else:
+            print(f"  Son respuestas del servidor: te está rechazando.")
+            if any(m.endswith('403') for m in motivos):
+                print()
+                print(f"  Un 403 en todos los términos suele ser bloqueo por")
+                print(f"  IP. Akamai deniega rangos de datacenter — Colab")
+                print(f"  entre ellos — con 403 hasta en la portada.")
+                print(f"  Comprobalo abriendo {BASE} en un navegador normal:")
+                print(f"  si carga ahí y acá no, es la IP. Correr desde una")
+                print(f"  red doméstica.")
         print()
         print(f"  No se escribió nada. El crudo existente quedó intacto.")
         print(f"{'='*64}\n")
-        sys.exit(2)
+        raise CapturaAbortada(2)
 
     ids = [i for i in listado if i not in hechos]
     print(f"\n  Candidatos únicos : {len(listado)}")
@@ -420,7 +477,7 @@ async def main(area, usar_navegador=True):
                                        hechos, fecha, periodo)
                 finally:
                     await browser.close()
-        except SystemExit:
+        except CapturaAbortada:
             raise
         except Exception as e:
             if fase == 'captura':
@@ -430,7 +487,7 @@ async def main(area, usar_navegador=True):
                 print(f"\n  ⛔  la captura se cortó ({type(e).__name__}: {e})")
                 print(f"  Lo bajado hasta acá quedó en disco. Relanzá el")
                 print(f"  mismo comando: es reanudable y no duplica.")
-                sys.exit(3)
+                raise CapturaAbortada(3)
             print(f"\n  ⚠  el navegador no arrancó ({type(e).__name__}: {e})")
             print(f"  Sigo en modo directo...")
             usar_navegador = False
@@ -475,4 +532,8 @@ if __name__ == "__main__":
         for a, c in CARRERAS_POR_AREA.items():
             print(f"  {len(c):3d} términos  {a}")
         sys.exit(1)
-    asyncio.run(main(args[0], usar_navegador='--sin-navegador' not in flags))
+    try:
+        asyncio.run(main(args[0],
+                         usar_navegador='--sin-navegador' not in flags))
+    except CapturaAbortada as e:
+        sys.exit(e.codigo)

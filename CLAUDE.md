@@ -147,6 +147,12 @@ una ruta de ejemplo. El envoltorio elimina la clase entera de error:
 ./capturar.sh "Agropecuaria"
 ```
 
+**Trampa de macOS:** el Python de python.org no usa el llavero del
+sistema, así que la primera corrida falla con
+`CERTIFICATE_VERIFY_FAILED` aunque `curl` funcione. Se arregla una vez
+con `/Applications/Python\ 3.x/Install\ Certificates.command`. El
+scraper lo detecta y lo dice.
+
 Resuelve la carpeta de datos sola —Drive de escritorio en macOS con «Mi
 unidad» o «My Drive», Drive clásico, o `/content/drive` en Colab—, aborta
 con un mensaje claro si no la encuentra o si hay más de una candidata, y
@@ -743,10 +749,16 @@ antes.
 8. **Deduplicar por empleador antes de leer cualquier agregado.** En
    Derecho un empleador es el 35% del área y su boilerplate institucional
    es lo que la generó. El conteo de avisos mide publicación, no demanda.
-9. **Fallar en silencio es peor que fallar.** Seis corridas anunciaron
+9. **Un diagnóstico equivocado es casi tan malo como ninguno.** La
+   primera versión del aborto decía "es un rechazo del sitio" ante un
+   fallo de TLS local: el sitio nunca había sido contactado. Distinguir
+   "vacío" de "fallo" no alcanza; hay que distinguir *quién* falló.
+   `clasificar_error()` separa SSL, DNS, timeout y respuesta del
+   servidor, y cada uno dice qué hacer.
+10. **Fallar en silencio es peor que fallar.** Seis corridas anunciaron
    "CAPTURA COMPLETA" con cero avisos mientras Akamai las rechazaba, y
    el problema se descubrió por casualidad. Un pipeline tiene que
    distinguir "no encontré nada" de "me rechazaron" y decirlo fuerte.
-10. **Un catálogo obtenido de un solo caso raro es una muestra, no un
+11. **Un catálogo obtenido de un solo caso raro es una muestra, no un
    censo.** Las 504 de Bresler parecían el universo; una sola corrida
    más agregó dos nombres. La taxonomía se acumula, no se congela.
