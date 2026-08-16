@@ -109,18 +109,21 @@ def bloque_umbral(avisos):
         return
     print(f"   por encima: " + ', '.join(f"{v}({dist[v]})" for v in grandes))
 
-    # La distribución observada es bimodal con un hueco enorme: valores
-    # legítimos hasta ~25, y después el salto a los que tildan medio
-    # catálogo. Un valor apenas por encima del corte es sospechoso.
+    # Con dos áreas la distribución era bimodal y el corte caía en un
+    # vacío, así que su valor exacto no cambiaba nada. Con las 10 áreas
+    # (agosto 2026) el hueco se pobló: es continua de 0 a 100 y el único
+    # salto queda antes de 504. El umbral pasó a ser una decisión
+    # sustantiva, y por eso el bloque 3 mira una señal que no depende
+    # de él.
     sospechosos = [v for v in grandes if v < UMBRAL * 3]
     maximo_legitimo = max(chicos) if chicos else 0
     if sospechosos:
         print(f"   ⚠  hay avisos con {', '.join(map(str, sospechosos))} "
-              f"carreras, cerca del corte.")
-        print(f"      El umbral supone un hueco entre lo legítimo (máx "
-              f"observado: {maximo_legitimo}) y lo genérico.")
-        print(f"      Revisá esos avisos: puede ser un concurso "
-              f"multidisciplinario real.")
+              f"carreras, apenas por encima del corte.")
+        print(f"      No hay hueco: el corte parte una población "
+              f"continua (máx bajo el umbral: {maximo_legitimo}).")
+        print(f"      El tamaño no separa la plantilla del concurso "
+              f"legítimo — mirá el bloque 3.")
     else:
         print(f"   ✓ el hueco se mantiene: máximo legítimo {maximo_legitimo}, "
               f"siguiente {min(grandes)}")
@@ -149,11 +152,60 @@ def bloque_genericos(avisos):
 
 
 # ══════════════════════════════════════════════════════════
-# 3 · CONCENTRACIÓN POR EMPLEADOR
+# 3 · CONJUNTOS DE CARRERAS REUTILIZADOS
+# ══════════════════════════════════════════════════════════
+
+def bloque_conjuntos(avisos):
+    """Perfiles guardados: un empleador que adjunta la misma lista de
+    carreras a todos sus avisos. Es la señal que el umbral por conteo no
+    captura — medido en agosto 2026, hay plantillas de 20 carreras y
+    concursos multidisciplinarios legítimos de 25."""
+    print(f"\n── 3. Conjuntos de carreras reutilizados")
+    if not any('hash_carreras' in a for a in avisos):
+        print("   sin columna hash_carreras: reconsolidá para tenerla")
+        return
+    tam = {}
+    emp = defaultdict(set)
+    for a in avisos:
+        h = a.get('hash_carreras')
+        if not h:
+            continue
+        tam[h] = entero(a.get('n_carreras_declaradas'))
+        emp[h].add(a.get('empresa_id'))
+    cuenta = Counter(a.get('hash_carreras') for a in avisos
+                     if a.get('hash_carreras'))
+    comp = [(n, h) for h, n in cuenta.items() if n > 1]
+    if not comp:
+        print("   ningún conjunto se repite entre avisos")
+        return
+    n_avisos = sum(n for n, _ in comp)
+    s = '' if len(comp) == 1 else 's'
+    print(f"   {len(comp)} conjunto{s} compartido{s} por {n_avisos} avisos "
+          f"({pct(n_avisos, len(avisos))})")
+    print(f"   Un conjunto repetido es un perfil guardado del empleador, "
+          f"no")
+    print(f"   una decisión por vacante. No depende de "
+          f"UMBRAL_AVISO_GENERICO.")
+    print(f"\n   {'avisos':>6} {'carreras':>9} {'empresas':>9}  "
+          f"{'bajo umbral':>11}")
+    for n, h in sorted(comp, reverse=True)[:10]:
+        marca = 'sí' if tam[h] <= UMBRAL else 'no'
+        print(f"   {n:>6} {tam[h]:>9} {len(emp[h]):>9}  {marca:>11}")
+    ocultos = [(n, h) for n, h in comp if tam[h] <= UMBRAL]
+    if ocultos:
+        so = '' if len(ocultos) == 1 else 's'
+        print(f"\n   ⚠  {len(ocultos)} conjunto{so} reutilizado{so} "
+              f"queda{'' if so else 'n'} POR DEBAJO del umbral")
+        print(f"      ({sum(n for n, _ in ocultos)} avisos): cuentan como "
+              f"específicos y no lo son.")
+
+
+# ══════════════════════════════════════════════════════════
+# 4 · CONCENTRACIÓN POR EMPLEADOR
 # ══════════════════════════════════════════════════════════
 
 def bloque_concentracion(avisos):
-    print(f"\n── 3. Concentración por empleador")
+    print(f"\n── 4. Concentración por empleador")
     print(f"   Leer ANTES de cualquier agregado: el conteo de avisos mide")
     print(f"   publicación, no demanda. En Derecho un solo empleador fue el")
     print(f"   35% del área, con su boilerplate institucional.")
@@ -186,7 +238,7 @@ def bloque_concentracion(avisos):
 # ══════════════════════════════════════════════════════════
 
 def bloque_deriva(avisos, aviso_termino):
-    print(f"\n── 4. Deriva del catálogo (ruta A)")
+    print(f"\n── 5. Deriva del catálogo (ruta A)")
     sin_map = sum(1 for a in avisos
                   if entero(a.get('n_terminos_sin_mapeo')) > 0)
     if aviso_termino is None:
@@ -212,7 +264,7 @@ def bloque_deriva(avisos, aviso_termino):
 # ══════════════════════════════════════════════════════════
 
 def bloque_terminos(avisos, aviso_termino, aviso_carrera):
-    print(f"\n── 5. Diagnóstico por término")
+    print(f"\n── 6. Diagnóstico por término")
     if aviso_termino is None:
         print("   requiere aviso_termino.csv")
         return
@@ -335,6 +387,7 @@ def main(dir_maestras):
 
     bloque_umbral(avisos)
     bloque_genericos(avisos)
+    bloque_conjuntos(avisos)
     bloque_concentracion(avisos)
     at = leer(p('aviso_termino.csv'))
     bloque_deriva(avisos, at)

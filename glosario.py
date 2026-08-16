@@ -227,6 +227,25 @@ GLOSAS = {
             "análisis (`UMBRAL_AVISO_GENERICO`, hoy 30). Diez avisos de "
             "un mismo empleador declaran 504 carreras y aparecen en "
             "cualquier búsqueda.",
+        'hash_carreras':
+            "Hash (16 hex) del **conjunto** de carreras declaradas, "
+            "normalizado y ordenado: dos avisos con las mismas carreras "
+            "en distinto orden comparten hash. **Vacío cuando el aviso "
+            "no declara ninguna** — no declarar nada no es compartir un "
+            "conjunto, y meterlos todos bajo un mismo hash inventaría el "
+            "grupo más grande de la tabla.",
+        'n_avisos_mismo_conjunto':
+            "Cuántos avisos distintos declaran exactamente ese conjunto. "
+            "**Identifica los perfiles guardados sin depender del "
+            "umbral**: un empleador que adjunta la misma lista a todos "
+            "sus avisos no está decidiendo por vacante. Bresler sale con "
+            "10, AMERICAR con 4, y un concurso multidisciplinario "
+            "legítimo (Universidad Mayor) sale con 1 porque cada "
+            "convocatoria trae su propia lista. Hizo falta porque el "
+            "tamaño del conjunto **no** separa esos dos casos: hay "
+            "plantillas de 20 carreras y concursos legítimos de 25. "
+            "Se cuenta sobre avisos deduplicados, no sobre "
+            "observaciones. Vacío si `hash_carreras` lo está.",
         'n_habilidades':   "Cuántas habilidades declara el aviso.",
         'n_instituciones': "Cuántas instituciones declara el aviso.",
         'postulaciones':

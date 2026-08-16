@@ -269,7 +269,8 @@ COLS_AVISOS = [
     'exp_operador', 'exp_anios', 'exp_inconsistente',
     'nivel_academico', 'situacion_academica',
     # conteos
-    'n_carreras_declaradas', 'n_habilidades', 'n_instituciones',
+    'n_carreras_declaradas', 'hash_carreras', 'n_avisos_mismo_conjunto',
+    'n_habilidades', 'n_instituciones',
     'postulaciones', 'visualizaciones',
     # flags
     'destacada', 'inclusiva', 'tipo_curriculum', 'usa_score_screening',
@@ -533,6 +534,23 @@ def main(dir_crudo, dir_maestras):
             p['calidad_duracion'] = 'cota_superior'
         else:
             p['calidad_duracion'] = 'observada'
+        # Hash del CONJUNTO de carreras declaradas. Junto con
+        # n_avisos_mismo_conjunto identifica los perfiles guardados —un
+        # empleador que adjunta la misma lista a todos sus avisos— sin
+        # depender de UMBRAL_AVISO_GENERICO. Medido en agosto 2026: el
+        # tamaño del conjunto NO separa la plantilla del concurso
+        # multidisciplinario legítimo (hay plantillas de 20 y concursos
+        # de 25), así que el umbral por conteo no alcanza.
+        #
+        # Vacío cuando el aviso no declara carreras: 3.703 avisos sin
+        # carreras no comparten un conjunto, no tienen ninguno. Meterlos
+        # todos bajo el mismo hash inventaría el grupo más grande de la
+        # tabla.
+        p['hash_carreras'] = (
+            __import__('hashlib').sha1(
+                '|'.join(sorted(normalizar(c) for c in p['_carreras']))
+                .encode('utf-8')).hexdigest()[:16]
+            if p['_carreras'] else None)
         p['hash_contenido'] = __import__('hashlib').sha1(
             f"{p['empresa_id']}|{normalizar(p['titulo'])}|"
             f"{normalizar((p['descripcion'] or '')[:2000])}"
@@ -670,6 +688,16 @@ def main(dir_crudo, dir_maestras):
                         key=lambda r: (-r['n_avisos_especificos'],
                                        -r['n_avisos_acum']))
 
+    # Segunda pasada: cuántos avisos comparten cada conjunto de
+    # carreras. Se cuenta sobre `avisos`, que ya está deduplicado por
+    # aviso_id; contarlo dentro del ciclo de observaciones inflaría el
+    # número tantas veces como áreas haya visto cada aviso.
+    conteo_conjuntos = Counter(a['hash_carreras'] for a in avisos.values()
+                               if a.get('hash_carreras'))
+    for a in avisos.values():
+        h = a.get('hash_carreras')
+        a['n_avisos_mismo_conjunto'] = conteo_conjuntos[h] if h else None
+
     n_av = escribir_csv_simple(M('avisos.csv'), list(avisos.values()),
                                COLS_AVISOS)
     n_ac = escribir_csv_simple(M('aviso_carrera.csv'), list(pares_car.values()),
@@ -751,6 +779,18 @@ def main(dir_crudo, dir_maestras):
     print(f"    avisos genéricos       : {genericos} "
           f"({pct(genericos, len(vals))}) — declaran >"
           f"{UMBRAL_AVISO_GENERICO} carreras")
+
+    # Conjuntos reutilizados: la señal que no depende del umbral.
+    comp = [(n, h) for h, n in conteo_conjuntos.items() if n > 1]
+    n_en_comp = sum(n for n, _ in comp)
+    print(f"    conjuntos compartidos  : {len(comp)} conjuntos en "
+          f"{n_en_comp} avisos")
+    if comp:
+        tam = {a['hash_carreras']: a['n_carreras_declaradas']
+               for a in avisos.values() if a.get('hash_carreras')}
+        print(f"      los mayores (avisos × tamaño del conjunto):")
+        for n, h in sorted(comp, reverse=True)[:5]:
+            print(f"        {n:>4} avisos × {tam.get(h, '?')} carreras")
     if filas_car:
         tot = sum(r['n_avisos_especificos'] for r in filas_car)
         print(f"    cobertura por n_avisos_especificos "
