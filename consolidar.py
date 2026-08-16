@@ -286,6 +286,20 @@ COLS_AVISO_TERMINO = [
     'aviso_id', 'termino_busqueda', 'carrera_sies', 'areas_sies', 'mapeado',
 ]
 
+# Las tablas de pares también declaran su esquema acá y no en la llamada
+# a escribir_csv_simple: diccionario.py los importa para saber qué
+# columna viene del código y cuál se agregó a mano.
+COLS_AVISO_CARRERA = [
+    'aviso_id', 'carrera_trabajando', 'termino_busqueda', 'fuente',
+    'n_carreras_declaradas_aviso',
+]
+
+COLS_AVISO_HABILIDAD = ['aviso_id', 'habilidad', 'nivel']
+
+COLS_AVISO_INSTITUCION = [
+    'aviso_id', 'id_institucion', 'n_carreras_declaradas_aviso',
+]
+
 COLS_EMPRESAS = [
     'empresa_id', 'empresa_id_alt', 'nombre_canonico', 'nombres_observados',
     'n_avisos_acumulados', 'primera_vez_visto', 'ultima_vez_visto',
@@ -659,17 +673,14 @@ def main(dir_crudo, dir_maestras):
     n_av = escribir_csv_simple(M('avisos.csv'), list(avisos.values()),
                                COLS_AVISOS)
     n_ac = escribir_csv_simple(M('aviso_carrera.csv'), list(pares_car.values()),
-                               ['aviso_id', 'carrera_trabajando',
-                                'termino_busqueda', 'fuente',
-                                'n_carreras_declaradas_aviso'])
+                               COLS_AVISO_CARRERA)
     n_at = escribir_csv_simple(M('aviso_termino.csv'),
                                list(pares_term.values()), COLS_AVISO_TERMINO)
     n_ah = escribir_csv_simple(M('aviso_habilidad.csv'), list(pares_hab.values()),
-                               ['aviso_id', 'habilidad', 'nivel'])
+                               COLS_AVISO_HABILIDAD)
     n_ai = escribir_csv_simple(M('aviso_institucion.csv'),
                                list(pares_inst.values()),
-                               ['aviso_id', 'id_institucion',
-                                'n_carreras_declaradas_aviso'])
+                               COLS_AVISO_INSTITUCION)
     n_em, man_em = escribir_csv(M('empresas.csv'), filas_emp,
                                 COLS_EMPRESAS, 'empresa_id')
     n_ca, man_ca = escribir_csv(M('carreras_trabajando.csv'), filas_car,

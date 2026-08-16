@@ -69,9 +69,40 @@ Lo que hay en el repo, y nada más:
 | `consolidar.py` | vigente — derivación |
 | `control.py` | chequeos de calidad + panel; lo corre `mensual.sh` solo |
 | `homologar.py` | genera la cola editable de homologación |
+| `diccionario.py` | genera `DICCIONARIO.md` desde los datos reales |
+| `glosario.py` | las glosas de las columnas, escritas a mano |
+| `DICCIONARIO.md` | generado; **no editar a mano** |
 | `carreras_sies_2026.py` | vigente — catálogo + índices; lo usan v9 y consolidar |
 | `CLAUDE.md` | este documento |
 | `.gitignore` | excluye bytecode, checkpoints de Colab, `crudo/` y `maestras/` |
+
+**El diccionario de variables** se genera, no se escribe:
+
+```bash
+python3 diccionario.py --maestras "<datos>/maestras" --crudo "<datos>/crudo"
+```
+
+`diccionario.py` lee las maestras y el crudo reales, los cruza con los
+esquemas de `consolidar.py`/`homologar.py` y con las glosas de
+`glosario.py`, y marca cada columna como descrita, **SIN DOCUMENTAR** o
+**HUÉRFANA** (hay glosa, ya no hay columna). Distingue además las
+columnas que vienen del código de las agregadas a mano, y calcula el
+relleno de cada una.
+
+La razón de generarlo es la misma de la lección 10: un diccionario
+escrito a mano se desincroniza **en silencio**. Si `consolidar.py` suma
+una columna, un documento estático no la menciona y el lector cree que
+la lista está completa. Acá aparece como SIN DOCUMENTAR.
+
+Correrlo después de tocar `consolidar.py` o `homologar.py`, y commitear
+el `DICCIONARIO.md` resultante. No está enganchado a `mensual.sh` a
+propósito: cambia cuando cambia el **código**, no cuando llegan datos
+nuevos.
+
+**Al escribir una glosa, solo se documenta lo verificado.** Si no se
+sabe qué es una columna, se deja afuera y el diccionario la lista como
+pendiente. Un hueco visible es información; una glosa plausible pero
+falsa, no.
 
 Borrados del repo (agosto 2026), por si aparecen mencionados en notas
 viejas: `scraper_v7.py`, `scraper_v8.py`, `sonda_detalle.py`,
