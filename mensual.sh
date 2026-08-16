@@ -11,7 +11,8 @@
 #   ./mensual.sh --solo-captura  # sin consolidar
 #   ./mensual.sh --desde "Salud" # retomar desde un área
 #
-# Deja un log por corrida en <datos>/logs/ y un resumen al final.
+# Al terminar consolida y corre el control de calidad. Todo queda en un
+# log por corrida en <datos>/logs/, con un resumen al final.
 #
 # CUÁNDO SE CORTA TODO
 #   Si un área falla por rechazo del sitio o por un problema local (SSL,
@@ -137,6 +138,14 @@ if [ "$CONSOLIDAR" -eq 1 ] && [ "${#OK[@]}" -gt 0 ]; then
     linea
     cd "$DATOS" && PYTHONPATH="$REPO" python3 -u "$REPO/consolidar.py" \
         --crudo crudo --maestras maestras
+
+    # Los chequeos salen solos: si dependieran de acordarse de correrlos,
+    # tarde o temprano no se corren. Van al mismo log que la captura.
+    echo
+    linea
+    echo "  CONTROL DE CALIDAD"
+    linea
+    PYTHONPATH="$REPO" python3 -u "$REPO/control.py" --maestras maestras
 elif [ "$CONSOLIDAR" -eq 1 ]; then
     echo
     echo "  No se consolidó: ninguna área se capturó."

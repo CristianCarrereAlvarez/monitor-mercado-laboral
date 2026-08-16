@@ -66,6 +66,7 @@ Lo que hay en el repo, y nada más:
 | `capturar.sh` | envoltorio de captura; resuelve la carpeta de datos y hace imposible el error de directorio |
 | `scraper_v9.py` | vigente — captura |
 | `consolidar.py` | vigente — derivación |
+| `control.py` | chequeos de calidad + panel; lo corre `mensual.sh` solo |
 | `homologar.py` | genera la cola editable de homologación |
 | `carreras_sies_2026.py` | vigente — catálogo + índices; lo usan v9 y consolidar |
 | `CLAUDE.md` | este documento |
@@ -111,15 +112,23 @@ cd ~/monitor-mercado-laboral && git pull
 Los envoltorios resuelven la carpeta de datos y el modo de sesión solos.
 Ver §4 para el detalle.
 
-### En Colab
+### El notebook, y por qué quedó tan chico
 
-El notebook `SMLab.ipynb` está **en el repo**, no suelto en Drive: se
-abre desde GitHub (hay un badge de Colab en la primera celda) y se
-versiona como cualquier otro archivo. Desde que la captura se fue del
-notebook, quedó organizado como herramienta de análisis: preparación,
-un puntero a los comandos de captura, consolidación opcional, y seis
-bloques de verificación sobre las maestras. Se guarda **con las salidas
+`SMLab.ipynb` está **en el repo**, no suelto en Drive: se abre desde
+GitHub (hay un badge de Colab en la primera celda) o con Jupyter local, y
+se versiona como cualquier otro archivo. Se guarda **con las salidas
 limpias**: sin outputs no hay fuga de datos ni diffs enormes.
+
+Tenía 37 celdas y quedó en 15. La razón es un criterio, no una limpieza:
+**lo que se corre igual todos los meses no es exploración, es un
+programa.** Los chequeos, el panel y la cola de homologación pasaron a
+`control.py` y `homologar.py`, que además `mensual.sh` puede encadenar.
+
+Al notebook le queda lo único que un cuaderno hace mejor que un script:
+preguntas nuevas, donde cada paso depende de lo que viste en el anterior.
+Carga las maestras, recuerda las tres reglas que condicionan cualquier
+análisis, y deja una celda en blanco. Si una pregunta se vuelve rutina,
+su lugar es `control.py`.
 
 Rutas en Colab: código en `/content/repo` (clon efímero, se re-clona en
 cada sesión) y datos en `/content/drive/MyDrive/monitor_mercado_laboral`
@@ -175,8 +184,12 @@ funcione sin pensarlo.
 ```
 
 Corre las áreas de menor a mayor, envuelve cada una en `caffeinate` para
-que el Mac no se suspenda, y deja un log por corrida en `<datos>/logs/`
-más un resumen de qué se capturó y qué no.
+que el Mac no se suspenda, **consolida y corre `control.py`** al final, y
+deja todo en un log por corrida en `<datos>/logs/`.
+
+Que el control salga solo es deliberado: si dependiera de acordarse de
+correrlo, tarde o temprano no se corre. Es la lección 10 aplicada a la
+verificación.
 
 **Corta todo ante un fallo de código 2** —rechazo del sitio o problema
 local— porque las demás áreas van a fallar igual y, si es bloqueo por IP,
@@ -741,6 +754,20 @@ concentracion_top1 = share del empleador más frecuente
 
 En Derecho eso da 14,3% / 14,0% / 35,1%. Los tres números juntos
 señalan el problema; ninguno solo alcanza.
+
+**Implementado en `control.py` (bloque 5), con una salvedad.** El cálculo
+automático no puede usar vocabulario curado a mano por término, así que
+`precision_titulo` mide algo más estricto: si el término aparece
+literalmente en el título, con match por prefijo para imitar al buscador.
+Sobre Derecho da **2,9%** en vez del 14,3% medido a mano, porque a mano
+se contaron también «abogado», «jurídico» y «legal», que ninguna regla
+genérica puede inferir. `precision_carrera` sí coincide: 14,8% contra
+14,0%.
+
+O sea: el número automático es un **piso**, no la misma estadística. Sirve
+para comparar términos entre sí, que es para lo que se usa. Lo que sigue
+pendiente es persistir un `estado_termino`; hoy es un informe, no un
+registro.
 
 **5. Memoria de `consolidar.py`.** Carga todos los crudos en RAM antes
 de escribir. Con 10 áreas y varios meses podría reventar en Colab.
