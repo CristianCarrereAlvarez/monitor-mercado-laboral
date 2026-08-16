@@ -62,6 +62,7 @@ Lo que hay en el repo, y nada más:
 | archivo | estado |
 |---|---|
 | `SMLab.ipynb` | **punto de entrada**; el notebook de Colab que orquesta todo |
+| `mensual.sh` | corrida mensual completa: las 10 áreas en orden + consolidación |
 | `capturar.sh` | envoltorio de captura; resuelve la carpeta de datos y hace imposible el error de directorio |
 | `scraper_v9.py` | vigente — captura |
 | `consolidar.py` | vigente — derivación |
@@ -162,6 +163,37 @@ recién entonces hace `cd` y lanza el scraper. Para forzar la ruta:
 También detecta si Playwright tiene Chromium instalado y, si no, agrega
 `--sin-navegador` solo. En un Mac con macOS 12 eso es lo que hace que
 funcione sin pensarlo.
+
+### La rutina mensual
+
+```bash
+./mensual.sh                  # las 10 áreas + consolidar
+./mensual.sh --desde "Salud"  # retomar sin repetir lo hecho
+./mensual.sh --solo-captura   # sin consolidar
+```
+
+Corre las áreas de menor a mayor, envuelve cada una en `caffeinate` para
+que el Mac no se suspenda, y deja un log por corrida en `<datos>/logs/`
+más un resumen de qué se capturó y qué no.
+
+**Corta todo ante un fallo de código 2** —rechazo del sitio o problema
+local— porque las demás áreas van a fallar igual y, si es bloqueo por IP,
+insistir lo empeora. Imprime el comando `--desde` para retomar. Un corte
+a mitad de captura (código 3) se reintenta una vez y sigue.
+
+Tecnología son 81 términos y tarda; conviene lanzarlo y dejarlo.
+
+### Reparto de tareas Mac / Colab
+
+| etapa | dónde |
+|---|---|
+| captura | **solo el Mac** — Colab está bloqueado |
+| consolidación | Mac (recomendado) o Colab; no toca la red |
+| análisis | Colab, por pandas ya instalado |
+
+Consolidar en el Mac justo después de capturar evita esperar a que Drive
+termine de subir el crudo. Las maestras viajan igual por Drive, así que
+el notebook las encuentra.
 
 ---
 

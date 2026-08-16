@@ -29,6 +29,7 @@ if [ $# -lt 1 ]; then
     cat >&2 <<FIN
 
   Uso: $(basename "$0") "<Área>" [opciones de scraper_v9.py]
+       $(basename "$0") --donde      # imprime la carpeta de datos
 
   Áreas disponibles:
 FIN
@@ -41,7 +42,12 @@ PY
     exit 1
 fi
 
-AREA="$1"; shift
+SOLO_RUTA=0
+if [ "$1" = "--donde" ]; then
+    SOLO_RUTA=1; AREA="(consulta)"; shift
+else
+    AREA="$1"; shift
+fi
 
 # ── 1. Resolver la carpeta de datos ───────────────────────────────
 CANDIDATOS=()
@@ -92,6 +98,11 @@ fi
 
 [ -w "$DATOS" ] || fatal "La carpeta de datos no es escribible: $DATOS"
 mkdir -p "$DATOS/crudo"
+
+if [ "$SOLO_RUTA" -eq 1 ]; then
+    printf '%s\n' "$DATOS"
+    exit 0
+fi
 
 # ── 2. ¿Hay Chromium para Playwright? ─────────────────────────────
 # Si no, se usa el modo directo. Playwright 1.62 no soporta Chromium en
