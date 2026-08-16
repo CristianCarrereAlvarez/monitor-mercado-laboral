@@ -1,7 +1,8 @@
 # CLAUDE.md — Monitor Mercado Laboral Chile
 
 Contexto completo del proyecto para continuar el trabajo. Escrito en
-agosto 2026 al cerrar la sesión de rediseño v7 → v9.
+agosto 2026 al cerrar la sesión de rediseño v7 → v9, y actualizado el
+16 de agosto con la primera corrida completa de las 10 áreas (§5.9).
 
 **Regla de trabajo del autor: cero tolerancia a información inventada.**
 Distinguir siempre entre (a) hecho verificado, (b) inferencia razonada,
@@ -326,6 +327,12 @@ Distribución de `n_carreras_declaradas` en Humanidades:
 No hay nada entre 26 y 503. `UMBRAL_AVISO_GENERICO = 20` funciona;
 cualquier valor entre 26 y 503 da lo mismo.
 
+**Revisar con el corpus completo.** Los avisos genéricos pasaron de 10 a
+**29** al correr las 10 áreas (§5.9). Diecinueve son nuevos y no está
+medido dónde caen: si alguno se ubica entre 26 y 503, el hueco que
+justifica el umbral dejó de existir. El bloque 1 de `control.py` avisa
+cuando un valor queda a menos de 3× el corte.
+
 ### 5.3 `estadoOferta`: la búsqueda devuelve avisos cerrados
 
 13 de 40 en la sonda (muestra **no aleatoria**, no extrapolable).
@@ -340,6 +347,10 @@ variable más valiosa del monitor y no se podía calcular antes.
 
 ### 5.4 Identidad de empresa
 
+Las cuatro primeras cifras son de **v7, área Administración, un mes**.
+Se conservan porque el mecanismo que muestran sigue vigente; para el
+corpus completo, ver §5.9.
+
 - `"Empresa Confidencial"` = 1.517 avisos / **400 `empresa_id`
   distintos** en Administración. Agrupar por nombre los colapsa en uno.
 - Un mismo `empresa_id` aparece con hasta **16 variantes de nombre**
@@ -351,6 +362,32 @@ variable más valiosa del monitor y no se podía calcular antes.
   `idCompany` es el mecanismo.
 - `urlLogo` es un chivato limpio: genérico
   (`logo_generico_azul.jpg`) si es confidencial.
+
+Medido sobre las 10 áreas v9 (9.125 avisos, 792 empresas):
+
+| | |
+|---|---|
+| avisos confidenciales | 1.872 (20,5%) |
+| ↳ con `empresa_id` identificado en otro aviso | 1.323 (**70,7%**) |
+| empresas siempre confidenciales | 167 |
+| empresas con >1 variante de nombre | 95 de 792 |
+| máximo de variantes en una empresa | 19 |
+
+El 70,7% contra el 68% de v7 —y contra el 30% que dio Derecho solo—
+confirma lo que §5.4 anticipaba: **acumular áreas mejora la resolución
+de confidenciales**, porque cada área nueva es otra chance de ver el
+mismo `empresa_id` identificado.
+
+Las 167 empresas sin ningún nombre registrado son **exactamente** las
+167 marcadas `siempre_confidencial`. Coincidencia perfecta: no hay fugas
+de nombre por un lado ni pérdidas por el otro.
+
+El peor caso de variantes ya no es RedSalud (15) sino
+`RENEE RPO Asistido para …` con **19**, que es una consultora de
+reclutamiento que renombra el aviso por cliente final. Ahí
+`nombre_canonico` elige uno arbitrario y los otros 18 quedan en
+`nombres_observados`; es un caso donde el nombre canónico no significa
+gran cosa y hay que leer el JSON completo.
 
 ### 5.5 Taxonomía de carreras: no hay crosswalk
 
@@ -418,6 +455,12 @@ de la muestra. Es el precio de no inventar atribución.
 Área corrida completa con v9. Un solo término de búsqueda: `"Derecho"`.
 **342 avisos, 342/342 con detalle ok.** Todo lo de abajo está medido
 sobre ese crudo.
+
+> **Alcance: esto es un área, y una chica.** El mecanismo de matching
+> (match por prefijo sobre el cuerpo del aviso) es general y quedó
+> demostrado acá. Las cifras de **concentración por empleador no lo
+> son**: en el corpus completo el top 1 baja de 35,1% a 5,5% (§5.9).
+> Derecho es un caso extremo, no el retrato del monitor.
 
 **El mecanismo de matching quedó demostrado.** Los 342 avisos —el
 100%— contienen la raíz `derech` en al menos uno de cuatro campos:
@@ -522,6 +565,106 @@ Las 2 desactivadas son `cota_superior`, no duración observada: ya
 estaban de baja en el primer avistamiento. Con una sola corrida no hay
 ninguna duración medida — hacen falta dos.
 
+### 5.9 El corpus completo (agosto 2026): las 10 áreas
+
+Primera corrida completa. `mensual.sh` hizo Arte y Arquitectura →
+Tecnología el 16/08 entre 13:38 y 17:51 (**4 h 13 min**); Derecho,
+Humanidades y Agropecuaria venían de corridas del mismo día.
+
+```
+10 áreas   17.744 observaciones   9.125 avisos únicos
+detalle ok 9.125/9.125  (100%)
+792 empresas   528 carreras   283 instituciones
+```
+
+Cero fallos de detalle en 9.125 avisos. Líneas de crudo por área
+(con solapamiento entre áreas):
+
+| área | avisos | | área | avisos |
+|---|---:|---|---|---:|
+| Administración y Comercio | 6.044 | | Arte y Arquitectura | 447 |
+| Tecnología | 5.883 | | Derecho | 342 |
+| Ciencias Sociales | 2.841 | | Educación | 322 |
+| Salud | 1.062 | | Agropecuaria | 186 |
+| Ciencias Básicas | 580 | | Humanidades | 37 |
+
+Las dos más grandes son el 65% de las observaciones. **Cada aviso
+apareció en 1,9 áreas en promedio** (17.744 / 9.125): el solapamiento
+entre áreas es enorme y `aviso_id` es lo único que lo contiene.
+
+| variable | valor |
+|---|---|
+| confidenciales | 1.872 (20,5%) |
+| sin carreras declaradas | 3.703 (40,6%) |
+| con habilidades | 1.854 (20,3%) |
+| estado último | 9.083 PUBLICADA / 42 DESACTIVADA |
+| genéricos (>30 carreras) | 29 (0,3%) |
+
+**La concentración por empleador se desploma respecto de Derecho.**
+
+| | Derecho solo | corpus completo |
+|---|---:|---:|
+| top 1 | 35,1% | **5,5%** |
+| top 3 | 52,9% | 12,6% |
+| top 10 | 71,6% | 25,7% |
+
+El top 1 es J.E.J. Ingeniería (505 avisos) y Fundación Integra —el 35%
+de Derecho— cae al 1,6%. La lección 8 sigue en pie, pero su alcance
+cambia: **deduplicar por empleador es crítico en áreas chicas y
+marginal en el agregado.** Con 792 empresas y 237 de ellas con un solo
+aviso, el corpus completo no está dominado por nadie.
+
+**Duración de vacante sigue en cero.** 42 desactivadas, las 42
+`cota_superior`. Hace falta la corrida de septiembre; es el diseño
+funcionando, no una falla.
+
+#### La taxonomía saturó, y es una lista controlada
+
+- **528 nombres.** Con Derecho solo había 506: **+22 en nueve áreas
+  más**, incluidas las dos más grandes. La curva está plana.
+- **504 de los 528 aparecen en las 10 áreas con conjunto idéntico** —el
+  patrón Bresler—; solo **24 quedan fuera** de ese conjunto.
+- Al normalizar (minúsculas, sin tildes, sin puntuación) colisionan
+  **exactamente 2 pares** de 528 (**0,4%**):
+
+```
+Ingeniería Civil en Minas  /  Ingeniería civil en minas
+Técnico en Instrumentación,Automatización…  /  …Instrumentación, Automatización…
+```
+
+Ese 0,4% es el dato que decide qué clase de campo es. Si fuera texto
+libre habría decenas de variantes por mayúsculas, tildes, espacios y
+typos. **Es una lista controlada** con dos entradas cargadas a mano.
+
+**Pero lista controlada no es taxonomía.** Conviven como hermanas al
+mismo nivel `Ingeniería`, `Ingeniería de Ejecución`, `Ingeniería
+Civil`, `Ingeniería Civil Industrial` e `Ingeniería Industrial`; hay
+entradas que fusionan sinónimos con barra (`Marketing / Mercadotecnia`,
+`Prevención de Riesgos / Seguridad Industrial`); y `Ingeniería` a secas
+tiene 281 avisos específicos. No hay principio de clasificación, hay
+vocabulario.
+
+La consecuencia es práctica y buena: **una lista controlada es
+homologable y finita.** Texto libre no lo sería.
+
+Contra SIES:
+
+```
+match exacto normalizado : 121 de los 198 nombres SIES
+                           (123 filas: las 2 colisiones se resuelven dos veces)
+                           cubre ~51% de las menciones específicas
+trabajando sin equivalente SIES : 405
+SIES que nunca aparece declarado :  77
+```
+
+**Los 77 SIES sin menciones NO son ausencia de demanda.** Ahí están
+`Ingeniería en Minas`, `Ingeniería Naval`, `Pedagogía en Educación
+Física`, `Técnico en Telecomunicaciones`. trabajando les pone otro
+nombre —tiene `Ingeniería Civil en Minas`, no `Ingeniería en Minas`—.
+Es desajuste de vocabulario, y es exactamente lo que la homologación
+arregla. Leerlo como "no hay avisos de esa carrera" sería el error
+contra el que se cuida todo este documento.
+
 ---
 
 ## 6. Las maestras
@@ -575,6 +718,20 @@ calidad_duracion, censurado
 
 Mezclarlas sesga la mediana hacia arriba. El resumen de
 `consolidar.py` ya las separa.
+
+**`n_corridas_visto` no cuenta corridas — cuenta observaciones.**
+Verificado en el código: incrementa una vez por cada registro de crudo
+donde aparece el aviso, y un mismo aviso aparece en varias áreas de la
+misma corrida. En agosto 2026 dio **5.910 avisos "vistos en >1
+corrida"** con una sola corrida mensual hecha: los 5.910 salieron en
+más de un área, no en más de un mes.
+
+La columna longitudinal correcta es **`periodos_visto`**, que es un
+conjunto de períodos y hoy vale `2026_08` para los 9.125 avisos. Para
+contar corridas reales hay que usar la cantidad de períodos, no
+`n_corridas_visto`. El nombre invita a un error de lectura serio en
+cuanto haya dos meses; conviene renombrarlo a `n_observaciones` o
+derivar la cuenta de `periodos_visto`.
 
 ### Ruta A — término de búsqueda → SIES
 
@@ -639,45 +796,80 @@ compatibilidad; conviene retirarlas en una limpieza posterior.
 
 ### Corrido
 
-| área | términos | estado |
-|---|---|---|
-| Derecho | 1 | ✅ v9, 342 avisos, consolidado (ago 2026) |
-| Humanidades | 3 | ✅ v9, 37 avisos, consolidado |
-| Administración y Comercio | 28 | ⚠️ solo v7 (CSV viejo, sin `estadoOferta` ni instituciones) |
-| Agropecuaria | 9 | ⚠️ solo v7 |
-| Las otras 6 | — | ❌ |
+**Las 10 áreas están capturadas con v9 y consolidadas** (16 agosto
+2026). El detalle por área y el perfil del corpus están en §5.9.
 
-Derecho tardó poco: un solo término. Rinde 342 avisos, casi diez veces
-Humanidades con un tercio de los términos — pero ~82% es ruido (§5.8).
-**Volumen de avisos y volumen de información no son lo mismo.**
+| área | términos | avisos |
+|---|---:|---:|
+| Derecho | 1 | 342 |
+| Humanidades | 3 | 37 |
+| Agropecuaria | 9 | 186 |
+| Arte y Arquitectura | 12 | 447 |
+| Ciencias Sociales | 14 | 2.841 |
+| Educación | 14 | 322 |
+| Ciencias Básicas | 15 | 580 |
+| Salud | 22 | 1.062 |
+| Administración y Comercio | 28 | 6.044 |
+| Tecnología | 81 | 5.883 |
+| **únicos tras deduplicar** | | **9.125** |
 
-Áreas por tamaño: Derecho 1, Humanidades 3, Agropecuaria 9,
-Arte y Arquitectura 12, Ciencias Sociales 14, Educación 14,
-Ciencias Básicas 15, Salud 22, Administración y Comercio 28,
-Tecnología 81.
+Términos y avisos no van de la mano. Derecho rinde 342 avisos con un
+solo término, casi diez veces Humanidades con un tercio de los
+términos — pero ~82% es ruido (§5.8). **Volumen de avisos y volumen de
+información no son lo mismo.**
 
-Los CSV de v7 **no son convertibles a crudo v9** sin perder campos.
-Decisión tomada: no re-correr Administración por ahora (tarda 42 min en
-v7). Los datos viejos siguen siendo útiles como referencia. La duración
-de vacante no se pierde porque se calcula contra `fecha_publicacion`,
-que viene exacta de la API en cada aviso.
+De los datos v7 de Administración y Comercio queda un CSV y un JSON de
+agosto 2026, fuera del repo. **No son convertibles a crudo v9**: son
+campos ya derivados y les faltan `estadoOferta`, `idCompany`,
+`instituciones`, `habilidades`, `ofertaConfidencial` y las `carreras`
+declaradas. Ya no hacen falta —el área se corrió con v9 el mismo día—
+pero conviene conservarlos: dos scrapers distintos sobre el mismo sitio
+el mismo día permiten una validación cruzada que no se puede repetir.
 
 ### Pendientes
 
-**1. Correr las áreas restantes.** Orden sugerido: de menor a mayor.
-Reanudable: si se corta, relanzar el mismo comando.
+**1. La corrida de septiembre.** Ya no queda área por descubrir: lo que
+falta es la **segunda observación**, que es lo que convierte el monitor
+en longitudinal. Hoy hay 42 avisos de baja y las 42 son `cota_superior`;
+ninguna duración medida. Un `./mensual.sh` en septiembre produce las
+primeras `observada`.
 
 **2. Homologación carreras trabajando → SIES.** Es el cuello de botella
 real y **no depende de correr más áreas**. La ruta A (§6) no la
 reemplaza, porque va desde el término buscado y no desde lo que el aviso
 declara.
 
-**El andamio ya existe** (agosto 2026): `homologar.py` genera
-`maestras/homologacion_carreras.csv` a partir de la taxonomía observada.
-Automatiza solo el match exacto normalizado y ordena el resto por
-`n_avisos_especificos`, que es la prioridad correcta. Medido sobre
-Derecho: de 506 nombres, **121 se resuelven solos y cubren el 68% de los
-avisos específicos** — el trabajo manual queda sobre el 32% restante.
+**El andamio ya existe y ya corrió** (agosto 2026): `homologar.py`
+genera `maestras/homologacion_carreras.csv` a partir de la taxonomía
+observada. Automatiza solo el match exacto normalizado y ordena el resto
+por `n_avisos_especificos`, que es la prioridad correcta.
+
+Estado sobre el corpus completo:
+
+```
+528 filas   123 resueltas por match exacto   405 pendientes
+ya cubierto: ~51% de las menciones específicas
+```
+
+**La curva de esfuerzo es muy favorable**, porque la distribución tiene
+cola larga. Revisando las pendientes en el orden en que el archivo ya
+viene ordenado:
+
+| filas revisadas | cobertura global |
+|---:|---:|
+| 25 | 76,8% |
+| 50 | 84,9% |
+| 100 | 92,3% |
+| 200 | 98,2% |
+
+O sea: **una sesión sobre 50 filas lleva la homologación del 51% al
+85%.** Las 25 primeras son casi todas variantes de ingeniería y
+administración (`Ingeniería Civil` 773 avisos, `Ingeniería en
+Administración de Empresas` 463, `Ingeniería` 281).
+
+Y como la taxonomía saturó en 528 (§5.9), este trabajo **no se va a
+rehacer** cuando lleguen los meses siguientes: las filas nuevas van a
+ser pocas y el archivo preserva lo escrito.
 
 Es idempotente y preserva las columnas manuales, incluidas las que
 inventes. La clave es compuesta `(carrera_trabajando, nivel_condicion)`,
@@ -770,9 +962,13 @@ pendiente es persistir un `estado_termino`; hoy es un informe, no un
 registro.
 
 **5. Memoria de `consolidar.py`.** Carga todos los crudos en RAM antes
-de escribir. Con 10 áreas y varios meses podría reventar en Colab.
-No medido. Se arregla con streaming si llega a pasar; no optimizar
-antes.
+de escribir. **Primera medición (agosto 2026): aguantó.** 10 archivos,
+~142 MB de JSONL, 17.744 registros, en un MacBook y sin incidente.
+
+Sigue siendo el punto que primero va a ceder, porque el costo crece con
+`meses × áreas`: en marzo serán ~1 GB de crudo. La señal a vigilar es el
+tiempo de consolidación, que hoy es de menos de un minuto. Cuando
+moleste, streaming; no antes.
 
 ---
 
@@ -818,6 +1014,10 @@ antes.
 8. **Deduplicar por empleador antes de leer cualquier agregado.** En
    Derecho un empleador es el 35% del área y su boilerplate institucional
    es lo que la generó. El conteo de avisos mide publicación, no demanda.
+   Con las 10 áreas ese top 1 baja a 5,5% (§5.9): el sesgo es de área
+   chica, no del corpus. **Una estadística de un área no es una
+   estadística del monitor**, y conviene decir siempre cuál de las dos
+   se está mirando.
 9. **Un diagnóstico equivocado es casi tan malo como ninguno.** La
    primera versión del aborto decía "es un rechazo del sitio" ante un
    fallo de TLS local: el sitio nunca había sido contactado. Distinguir
@@ -831,3 +1031,14 @@ antes.
 11. **Un catálogo obtenido de un solo caso raro es una muestra, no un
    censo.** Las 504 de Bresler parecían el universo; una sola corrida
    más agregó dos nombres. La taxonomía se acumula, no se congela.
+   Corolario de agosto 2026: acumuló y **se detuvo en 528** (§5.9). Que
+   una muestra no sea un censo no significa que el censo esté lejos;
+   significa que hay que medir la saturación en vez de suponerla en
+   cualquiera de las dos direcciones.
+12. **Un campo controlado no es lo mismo que un campo clasificado.**
+   `carreras` es una lista cerrada —0,4% de variantes al normalizar— y
+   aun así no es una taxonomía: mezcla niveles, fusiona sinónimos y
+   tiene `Ingeniería` a secas con 281 avisos. La pregunta útil no es
+   "¿es texto libre?" sino "¿tiene un principio de clasificación?".
+   De la primera respuesta depende si vale homologar; de la segunda,
+   si se puede agregar sin homologar.
