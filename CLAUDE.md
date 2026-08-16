@@ -883,6 +883,30 @@ compatibilidad; conviene retirarlas en una limpieza posterior.
   (Universidad Mayor) cae en el mismo rango: **el tamaño no separa los
   dos casos.** Queda en 30 por falta de algo mejor, sabiendo que es
   arbitrario y que afecta al 0,65% de los avisos.
+
+- **`hash_carreras` + `n_avisos_mismo_conjunto`** (agosto 2026) — la
+  señal que **no depende del umbral**. El hash identifica el conjunto
+  declarado (normalizado y ordenado: mismo conjunto en distinto orden
+  da el mismo hash) y el contador dice cuántos avisos lo comparten.
+
+  Un conjunto repetido es un **perfil guardado del empleador**, no una
+  decisión por vacante: Bresler sale con 10, Salazar Israel con 5,
+  AMERICAR con 4. Un concurso multidisciplinario legítimo sale con 1,
+  porque cada convocatoria trae su propia lista — así se separan los
+  dos casos que el tamaño confunde (§5.2).
+
+  Vacío cuando el aviso no declara carreras. No declarar nada no es
+  compartir un conjunto, y agrupar los 3.703 avisos sin carreras bajo
+  un mismo hash inventaría el grupo más grande de la tabla.
+
+  Se cuenta sobre avisos deduplicados. Contarlo dentro del ciclo de
+  observaciones lo inflaría tantas veces como áreas haya visto cada
+  aviso — lección 3.
+
+  El bloque 3 de `control.py` lo reporta y avisa cuántos conjuntos
+  reutilizados quedan **por debajo** del umbral: son los que hoy
+  cuentan como específicos sin serlo.
+
 - `instituciones.n_avisos_especificos` — **usa el umbral de carreras
   como proxy y es imperfecto.** Un aviso con 19 carreras declaró 35 de
   56 instituciones y cuenta como específico. `aviso_institucion.csv`
