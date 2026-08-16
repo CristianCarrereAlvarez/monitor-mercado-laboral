@@ -1,7 +1,7 @@
 """
 Consolidación — crudo JSONL → maestras CSV acumuladas
 ======================================================
-Lee todos los crudo_*.jsonl y hace UPSERT sobre siete tablas.
+Lee todos los crudo_*.jsonl y hace UPSERT sobre ocho tablas.
 Es idempotente y reprocesable: se puede correr las veces que sea, y si
 mañana cambia un criterio de parseo, se vuelve a correr sobre el mismo
 crudo sin tocar la red.
@@ -10,6 +10,7 @@ Tablas (directorio maestras/):
 
   avisos.csv               1 fila por aviso_id — panel longitudinal
   aviso_carrera.csv        1 fila por (aviso × carrera declarada)
+  aviso_termino.csv        1 fila por (aviso × término de búsqueda)
   aviso_habilidad.csv      1 fila por (aviso × habilidad)
   aviso_institucion.csv    1 fila por (aviso × institución)
   empresas.csv             1 fila por empresa_id  ← columnas manuales
@@ -45,6 +46,17 @@ Uso:
 import argparse, csv, glob, json, os, re, sys, unicodedata
 from collections import Counter, defaultdict
 from datetime import datetime
+
+# Ruta A (término de búsqueda → SIES). Import blando: si el módulo no
+# está, el resto de la consolidación sigue funcionando y las columnas
+# derivadas quedan vacías, pero se avisa en pantalla. No falla en
+# silencio.
+try:
+    from carreras_sies_2026 import TERMINO_A_SIES, TERMINO_A_AREAS
+    SIES_DISPONIBLE = True
+except ImportError:
+    TERMINO_A_SIES, TERMINO_A_AREAS = {}, {}
+    SIES_DISPONIBLE = False
 
 csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
 
@@ -263,7 +275,15 @@ COLS_AVISOS = [
     'destacada', 'inclusiva', 'tipo_curriculum', 'usa_score_screening',
     # auditoría
     'areas_scraping', 'terminos_busqueda', 'n_terminos_busqueda',
+    # ruta A: derivado del término de búsqueda, no de lo que declara el
+    # aviso. Sobre-atribuye por diseño (ver carreras_sies_2026.py).
+    'sies_por_termino', 'n_sies_por_termino', 'areas_sies_por_termino',
+    'n_terminos_sin_mapeo',
     'detalle_ok', 'detalle_motivo',
+]
+
+COLS_AVISO_TERMINO = [
+    'aviso_id', 'termino_busqueda', 'carrera_sies', 'areas_sies', 'mapeado',
 ]
 
 COLS_EMPRESAS = [
@@ -279,10 +299,22 @@ COLS_CARRERAS = [
 
 # Un aviso que declara más carreras que esto está tildando media
 # taxonomía y no informa nada sobre qué carrera busca de verdad.
-# Observado: hay avisos que declaran las 504 carreras del catálogo.
 # `n_avisos_especificos` cuenta solo los avisos por debajo del umbral,
 # y es el orden correcto para priorizar la homologación manual.
-UMBRAL_AVISO_GENERICO = 20
+#
+# El catálogo observado en carreras_trabajando.csv llevaba 506 nombres
+# distintos con dos áreas scrapeadas (agosto 2026); crece con cada área
+# nueva. Hay avisos que tildan una fracción enorme de ese catálogo.
+#
+# Por qué 30 y no 20. La distribución observada es bimodal con un hueco
+# enorme: en Humanidades y en Derecho el máximo legítimo es 25 y el
+# siguiente valor es 504. Cualquier corte dentro de ese hueco da el
+# mismo resultado. 20 caía FUERA del hueco y marcaba como genérico el
+# aviso 6102956 (Universidad Mayor, 25 carreras), que es un concurso
+# académico legítimamente multidisciplinario. Medido: pasar de 20 a 30
+# solo cambia ese aviso — 25 carreras suben +1 en n_avisos_especificos
+# y nada más. Revisar el corte si aparece un área que puebla el hueco.
+UMBRAL_AVISO_GENERICO = 30
 
 COLS_INSTITUCIONES = [
     'id_institucion', 'id_institucion_sqlserver', 'nombre_institucion',
@@ -420,6 +452,7 @@ def main(dir_crudo, dir_maestras):
 
     avisos       = {}
     pares_car    = {}
+    pares_term   = {}
     pares_hab    = {}
     pares_inst   = {}
     emp_nombres  = defaultdict(Counter)
@@ -458,6 +491,17 @@ def main(dir_crudo, dir_maestras):
         p['areas_scraping']   = ' | '.join(sorted(x for x in areas if x))
         p['terminos_busqueda'] = ' | '.join(sorted(terms))
         p['n_terminos_busqueda'] = len(terms)
+
+        # ── ruta A ────────────────────────────────────────────
+        sies_t  = sorted({TERMINO_A_SIES[t] for t in terms
+                          if t in TERMINO_A_SIES})
+        areas_t = sorted({a for t in terms
+                          for a in TERMINO_A_AREAS.get(t, ())})
+        p['sies_por_termino']       = ' | '.join(sies_t)
+        p['n_sies_por_termino']     = len(sies_t)
+        p['areas_sies_por_termino'] = ' | '.join(areas_t)
+        p['n_terminos_sin_mapeo']   = sum(1 for t in terms
+                                          if t not in TERMINO_A_SIES)
         p['censurado'] = p['fecha_desactivacion_detectada'] is None
         p['dias_publicado_hasta_baja'] = dias_entre(
             p['fecha_publicacion'], p['fecha_desactivacion_detectada'])
@@ -501,6 +545,23 @@ def main(dir_crudo, dir_maestras):
                     'aviso_id': idf, 'carrera_trabajando': None,
                     'termino_busqueda': t, 'fuente': 'keyword_only',
                     'n_carreras_declaradas_aviso': 0}
+
+        # Ruta A completa: un par por (aviso × término), declare o no
+        # carreras el aviso. Es la tabla puente hacia SIES que no
+        # requiere trabajo manual.
+        #
+        # NOTA: esta tabla supersede las filas fuente='keyword_only' de
+        # aviso_carrera.csv — verificado que son subconjunto estricto
+        # (151 ⊂ 342 en Derecho). Se dejan por compatibilidad con
+        # análisis existentes; conviene retirarlas en una limpieza
+        # posterior, no acá.
+        for t in p['_terminos']:
+            pares_term[(idf, t)] = {
+                'aviso_id': idf,
+                'termino_busqueda': t,
+                'carrera_sies': TERMINO_A_SIES.get(t),
+                'areas_sies': ' | '.join(TERMINO_A_AREAS.get(t, ())) or None,
+                'mapeado': t in TERMINO_A_SIES}
 
         for h in p['_habilidades']:
             nom = h.get('nombreHabilidad')
@@ -601,6 +662,8 @@ def main(dir_crudo, dir_maestras):
                                ['aviso_id', 'carrera_trabajando',
                                 'termino_busqueda', 'fuente',
                                 'n_carreras_declaradas_aviso'])
+    n_at = escribir_csv_simple(M('aviso_termino.csv'),
+                               list(pares_term.values()), COLS_AVISO_TERMINO)
     n_ah = escribir_csv_simple(M('aviso_habilidad.csv'), list(pares_hab.values()),
                                ['aviso_id', 'habilidad', 'nivel'])
     n_ai = escribir_csv_simple(M('aviso_institucion.csv'),
@@ -633,6 +696,7 @@ def main(dir_crudo, dir_maestras):
     print(f"\n{'='*64}\n  MAESTRAS  →  {dir_maestras}/\n{'='*64}")
     print(f"  avisos.csv              {n_av:7d}")
     print(f"  aviso_carrera.csv       {n_ac:7d}")
+    print(f"  aviso_termino.csv       {n_at:7d}")
     print(f"  aviso_habilidad.csv     {n_ah:7d}")
     print(f"  aviso_institucion.csv   {n_ai:7d}")
     print(f"  empresas.csv            {n_em:7d}   (+{man_em} col. manuales)")
@@ -684,6 +748,25 @@ def main(dir_crudo, dir_maestras):
             if len(filas_car) > n:
                 acum = sum(r['n_avisos_especificos'] for r in filas_car[:n])
                 print(f"      top {n:3d} carreras cubren {pct(acum, tot)}")
+    # ══ ruta A ══════════════════════════════════════════════════
+    print(f"\n  RUTA A — término de búsqueda → SIES")
+    if not SIES_DISPONIBLE:
+        print(f"    ⚠  carreras_sies_2026.py no importable. Las columnas")
+        print(f"       sies_por_termino quedaron VACÍAS. Corré consolidar.py")
+        print(f"       desde el directorio del repo.")
+    else:
+        sin_map = sorted({f['termino_busqueda'] for f in pares_term.values()
+                          if not f['mapeado']})
+        con_sies = sum(1 for a in vals if a['n_sies_por_termino'])
+        print(f"    avisos con ≥1 SIES por término : "
+              f"{con_sies} ({pct(con_sies, len(vals))})")
+        print(f"    términos sin mapeo             : {len(sin_map)}")
+        for t in sin_map[:10]:
+            print(f"        {t}")
+        if len(sin_map) > 10:
+            print(f"        ... y {len(sin_map) - 10} más")
+        print(f"    Recordá: sobre-atribuye. Es contexto, no clasificación.")
+
     print(f"\n  Siguiente: completar la homologación a mano en "
           f"{M('carreras_trabajando.csv')}")
     print(f"  (agregar columnas carrera_sies / tipo_relacion / revisado_por;")
