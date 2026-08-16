@@ -66,6 +66,7 @@ Lo que hay en el repo, y nada más:
 | `capturar.sh` | envoltorio de captura; resuelve la carpeta de datos y hace imposible el error de directorio |
 | `scraper_v9.py` | vigente — captura |
 | `consolidar.py` | vigente — derivación |
+| `homologar.py` | genera la cola editable de homologación |
 | `carreras_sies_2026.py` | vigente — catálogo + índices; lo usan v9 y consolidar |
 | `CLAUDE.md` | este documento |
 | `.gitignore` | excluye bytecode, checkpoints de Colab, `crudo/` y `maestras/` |
@@ -654,10 +655,30 @@ que viene exacta de la API en cada aviso.
 Reanudable: si se corta, relanzar el mismo comando.
 
 **2. Homologación carreras trabajando → SIES.** Es el cuello de botella
-real y **no depende de correr más áreas** — las 504 ya están. Sigue
-pendiente: la ruta A (§6) no la reemplaza, porque va desde el término
-buscado y no desde lo que el aviso declara. Diseño acordado, aún no
-implementado:
+real y **no depende de correr más áreas**. La ruta A (§6) no la
+reemplaza, porque va desde el término buscado y no desde lo que el aviso
+declara.
+
+**El andamio ya existe** (agosto 2026): `homologar.py` genera
+`maestras/homologacion_carreras.csv` a partir de la taxonomía observada.
+Automatiza solo el match exacto normalizado y ordena el resto por
+`n_avisos_especificos`, que es la prioridad correcta. Medido sobre
+Derecho: de 506 nombres, **121 se resuelven solos y cubren el 68% de los
+avisos específicos** — el trabajo manual queda sobre el 32% restante.
+
+Es idempotente y preserva las columnas manuales, incluidas las que
+inventes. La clave es compuesta `(carrera_trabajando, nivel_condicion)`,
+así que un caso 1:N se resuelve duplicando la fila y poniendo
+`universitaria` en una y `tecnica` en la otra. Verificado.
+
+Genera además `sugerencia` y `score` por solapamiento de tokens.
+**Nunca se aplican solas.** Y conviene mirarlas con desconfianza: a
+"Ingeniería Civil" le sugiere "Ingeniería Civil Industrial" con score
+0,67, que es exactamente la confusión contra la que advierte §5.5. Sirven
+para ordenar la pantalla, no para decidir.
+
+Lo que sigue pendiente es el trabajo humano: abrir el CSV y completarlo.
+El diseño acordado, ya implementado en el archivo:
 
 ```
 homologacion_carreras.csv
@@ -681,9 +702,9 @@ Decisiones acordadas:
   del aviso.
 - **Automatizar solo match exacto normalizado.** Nada de fuzzy: en esta
   taxonomía "Ingeniería Civil" e "Ingeniería Civil Industrial" están a
-  un token y son carreras distintas. Un `homologar.py` puede generar
-  columnas `sugerencia`/`score` que **nunca se aplican solas**, solo
-  ordenan la pantalla para revisión manual.
+  un token y son carreras distintas. `homologar.py` genera columnas
+  `sugerencia`/`score` que **nunca se aplican solas**, solo ordenan la
+  pantalla para revisión manual.
 - La homologación **no va en el scraping**. Se hace sobre las maestras
   y se puede rehacer cuantas veces se quiera.
 
