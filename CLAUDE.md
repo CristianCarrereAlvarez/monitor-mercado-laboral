@@ -818,8 +818,13 @@ compatibilidad; conviene retirarlas en una limpieza posterior.
 - `instituciones.n_avisos_especificos` — **usa el umbral de carreras
   como proxy y es imperfecto.** Un aviso con 19 carreras declaró 35 de
   56 instituciones y cuenta como específico. `aviso_institucion.csv`
-  guarda `n_instituciones_aviso` para poder calibrar un umbral propio
-  cuando haya volumen. Leer esta columna con reserva.
+  guarda `n_carreras_declaradas_aviso` para poder calibrar un umbral
+  propio cuando haya volumen. Leer esta columna con reserva.
+
+  (Hasta agosto 2026 este párrafo decía `n_instituciones_aviso`, una
+  columna que nunca existió: el código siempre escribió el conteo de
+  carreras. Lo encontró `diccionario.py` al cruzar glosas con datos
+  reales, que es exactamente para lo que está.)
 
 ---
 
