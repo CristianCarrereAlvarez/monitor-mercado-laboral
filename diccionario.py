@@ -119,14 +119,23 @@ def leer_crudo(dir_crudo, muestra=None):
     n = 0
     top, det = {}, {}
     orden_top, orden_det = [], []
+    # Hasta 6 valores distintos por clave. Es lo que permite escribir
+    # una glosa a partir de evidencia en vez de adivinar por el nombre.
+    ejemplos = {}
 
-    def contar(d, acc, orden):
+    def contar(d, acc, orden, prefijo=''):
         for k, v in d.items():
             if k not in acc:
                 acc[k] = 0
                 orden.append(k)
             if v is not None and v != '' and v != [] and v != {}:
                 acc[k] += 1
+            e = ejemplos.setdefault(prefijo + k, [])
+            if len(e) < 6:
+                s = repr(v)
+                s = s[:90] + '…' if len(s) > 90 else s
+                if s not in e:
+                    e.append(s)
 
     for path in archivos:
         leidas = 0
@@ -143,13 +152,13 @@ def leer_crudo(dir_crudo, muestra=None):
                     continue
                 leidas += 1
                 n += 1
-                contar(reg, top, orden_top)
+                contar(reg, top, orden_top, '_crudo.')
                 d = reg.get('detalle')
                 if isinstance(d, dict):
-                    contar(d, det, orden_det)
+                    contar(d, det, orden_det, '_crudo.detalle.')
     return {'archivos': len(archivos), 'registros': n,
             'top': (orden_top, top), 'detalle': (orden_det, det),
-            'muestreado': bool(muestra)}
+            'ejemplos': ejemplos, 'muestreado': bool(muestra)}
 
 
 def pct(x, base):
@@ -194,7 +203,7 @@ def bloque_columnas(cols_datos, llenos, n_filas, esquema, glosas,
     return filas, sin_doc, huerfanas, ausentes, manuales
 
 
-def main(dir_maestras, dir_crudo, salida, muestra):
+def main(dir_maestras, dir_crudo, salida, muestra, evidencia=False):
     hay_esquema = bool(ESQUEMAS)
     out = []
     tot_sin, tot_huerf, tot_aus, tot_man, tot_cols = [], [], [], [], 0
@@ -406,6 +415,27 @@ def main(dir_maestras, dir_crudo, salida, muestra):
     print(f"\n  Archivo: {salida}")
     print("=" * 64 + "\n")
 
+    if evidencia and crudo:
+        print("=" * 64)
+        print("  EVIDENCIA PARA LAS CLAVES DEL CRUDO SIN DOCUMENTAR")
+        print("=" * 64)
+        print("  Valores reales de cada clave sin glosa. Escribí la glosa")
+        print("  a partir de esto, no del nombre de la clave. Si los")
+        print("  valores no alcanzan para saber qué es, dejala pendiente.")
+        pendientes = [(t_, c) for t_, c in tot_sin if t_.startswith('_crudo')]
+        if not pendientes:
+            print("\n  No queda ninguna.")
+        for t_, c in pendientes:
+            clave = ('_crudo.detalle.' if t_ == '_crudo.detalle'
+                     else '_crudo.') + c
+            cuentas = crudo['detalle'][1] if t_ == '_crudo.detalle' \
+                else crudo['top'][1]
+            print(f"\n  ── {c}   (relleno "
+                  f"{pct(cuentas.get(c, 0), crudo['registros'])})")
+            for v in crudo['ejemplos'].get(clave, []):
+                print(f"       {v}")
+        print("=" * 64 + "\n")
+
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
@@ -415,7 +445,9 @@ if __name__ == "__main__":
                     help='por defecto, DICCIONARIO.md en el repo')
     ap.add_argument('--muestra', type=int, default=None,
                     help='líneas por archivo de crudo (relleno aproximado)')
+    ap.add_argument('--evidencia', action='store_true',
+                    help='muestra valores reales de las claves sin glosa')
     a = ap.parse_args()
     destino = a.salida or os.path.join(
         os.path.dirname(os.path.abspath(__file__)), 'DICCIONARIO.md')
-    main(a.maestras, a.crudo, destino, a.muestra)
+    main(a.maestras, a.crudo, destino, a.muestra, a.evidencia)
