@@ -79,50 +79,51 @@ produjeron están en §5; el código no volvió a hacer falta.
 
 ## 3. Entorno
 
-> **AGOSTO 2026 — Colab ya no sirve para capturar.** Akamai bloquea los
-> rangos de datacenter: desde Colab, `trabajando.cl` devuelve **403 en
-> todo, incluida la portada**. Verificado con un experimento limpio —
-> mismo sitio, mismo minuto, la portada carga desde una conexión
-> doméstica y da 403 desde Colab. La captura hay que correrla desde una
-> máquina con IP residencial. Consolidación y análisis siguen andando en
-> Colab sin problema: no tocan la red. Ver §4.
+**Dos máquinas, no una.** Hasta agosto 2026 todo corría en Colab. Ya no:
+Akamai bloquea los rangos de datacenter y desde Colab `trabajando.cl`
+devuelve **403 en todo, incluida la portada**. Verificado con un
+experimento limpio — mismo sitio, mismo minuto, la portada carga desde
+una conexión doméstica y da 403 desde Colab.
 
-Se trabaja en **Google Colab**, con el código en GitHub y los datos en
-Google Drive.
+| etapa | dónde corre | por qué |
+|---|---|---|
+| **captura** | **solo una máquina con IP residencial** | Colab está bloqueado |
+| consolidación | esa misma máquina, o Colab | no toca la red |
+| análisis | Colab | trae pandas instalado |
+
+Conviene **consolidar en la misma máquina donde se captura**: los
+archivos ya están ahí y no hay que esperar a que Drive termine de subir
+el crudo. Las maestras viajan igual por Drive, así que el notebook las
+encuentra.
+
+El código sigue en GitHub y los datos en Google Drive; lo que cambió es
+quién ejecuta qué.
+
+### En la máquina de captura
+
+```bash
+cd ~/monitor-mercado-laboral && git pull
+./mensual.sh                  # las 10 áreas + consolidación
+./capturar.sh "Agropecuaria"  # una sola área
+```
+
+Los envoltorios resuelven la carpeta de datos y el modo de sesión solos.
+Ver §4 para el detalle.
+
+### En Colab
 
 El notebook `SMLab.ipynb` está **en el repo**, no suelto en Drive: se
 abre desde GitHub (hay un badge de Colab en la primera celda) y se
-versiona como cualquier otro archivo. Está organizado en cuatro
-secciones —preparación, captura, consolidación, verificaciones— con el
-orden de uso escrito adentro. Se guarda **con las salidas limpias**:
-sin outputs no hay fuga de datos ni diffs enormes.
+versiona como cualquier otro archivo. Desde que la captura se fue del
+notebook, quedó organizado como herramienta de análisis: preparación,
+un puntero a los comandos de captura, consolidación opcional, y seis
+bloques de verificación sobre las maestras. Se guarda **con las salidas
+limpias**: sin outputs no hay fuga de datos ni diffs enormes.
 
-- Código: `/content/repo` (clon efímero, se re-clona en cada sesión)
-- Datos: `/content/drive/MyDrive/monitor_mercado_laboral` (persistente)
-  - `crudo/` — JSONL por área y mes
-  - `maestras/` — CSV acumulados
-
-Separados a propósito: `git pull` nunca choca con archivos generados.
-`/content/` se borra al reiniciar la sesión; por eso los datos van a
-Drive.
-
-```python
-# instalación
-!pip install -q playwright nest_asyncio
-!playwright install --with-deps chromium
-
-# correr un área
-%cd $DATOS
-!PYTHONPATH=/content/repo python -u /content/repo/scraper_v9.py "Agropecuaria"
-
-# consolidar
-%cd $DATOS
-!python /content/repo/consolidar.py --crudo crudo --maestras maestras
-```
-
-`PYTHONPATH` permite importar `carreras_sies_2026.py` desde el repo
-mientras el working dir está en Drive. `-u` desactiva el buffering para
-ver progreso en vivo.
+Rutas en Colab: código en `/content/repo` (clon efímero, se re-clona en
+cada sesión) y datos en `/content/drive/MyDrive/monitor_mercado_laboral`
+(persistente, con `crudo/` y `maestras/`). Separados a propósito, así
+`git pull` nunca choca con archivos generados.
 
 **Trampa conocida:** si hay archivos sin trackear en `/content/repo`
 que después se suben a GitHub, el `git pull` aborta con *"untracked
@@ -137,8 +138,8 @@ sesión, `.gitignore` lo oculta de `git status` y **nada avisa**. El
 síntoma aparece después: se consolida y el área recién corrida no está,
 porque `consolidar.py` leyó el `crudo/` de Drive.
 
-Por eso toda celda de captura y de consolidación en `SMLab.ipynb`
-empieza con `%cd $DATOS`. No es cosmético.
+Por eso la celda de consolidación del notebook empieza con
+`%cd $DATOS`, y por eso las de captura ya no existen ahí.
 
 **Y por eso existe `capturar.sh`.** Documentar la trampa no alcanzó: se
 repitió igual, en Colab en silencio y después en la terminal por copiar
@@ -182,18 +183,6 @@ insistir lo empeora. Imprime el comando `--desde` para retomar. Un corte
 a mitad de captura (código 3) se reintenta una vez y sigue.
 
 Tecnología son 81 términos y tarda; conviene lanzarlo y dejarlo.
-
-### Reparto de tareas Mac / Colab
-
-| etapa | dónde |
-|---|---|
-| captura | **solo el Mac** — Colab está bloqueado |
-| consolidación | Mac (recomendado) o Colab; no toca la red |
-| análisis | Colab, por pandas ya instalado |
-
-Consolidar en el Mac justo después de capturar evita esperar a que Drive
-termine de subir el crudo. Las maestras viajan igual por Drive, así que
-el notebook las encuentra.
 
 ---
 
