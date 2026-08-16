@@ -62,6 +62,7 @@ Lo que hay en el repo, y nada más:
 | archivo | estado |
 |---|---|
 | `SMLab.ipynb` | **punto de entrada**; el notebook de Colab que orquesta todo |
+| `capturar.sh` | envoltorio de captura; resuelve la carpeta de datos y hace imposible el error de directorio |
 | `scraper_v9.py` | vigente — captura |
 | `consolidar.py` | vigente — derivación |
 | `carreras_sies_2026.py` | vigente — catálogo + índices; lo usan v9 y consolidar |
@@ -137,6 +138,24 @@ porque `consolidar.py` leyó el `crudo/` de Drive.
 
 Por eso toda celda de captura y de consolidación en `SMLab.ipynb`
 empieza con `%cd $DATOS`. No es cosmético.
+
+**Y por eso existe `capturar.sh`.** Documentar la trampa no alcanzó: se
+repitió igual, en Colab en silencio y después en la terminal por copiar
+una ruta de ejemplo. El envoltorio elimina la clase entera de error:
+
+```bash
+./capturar.sh "Agropecuaria"
+```
+
+Resuelve la carpeta de datos sola —Drive de escritorio en macOS con «Mi
+unidad» o «My Drive», Drive clásico, o `/content/drive` en Colab—, aborta
+con un mensaje claro si no la encuentra o si hay más de una candidata, y
+recién entonces hace `cd` y lanza el scraper. Para forzar la ruta:
+`MML_DATOS=... ./capturar.sh "Salud"`.
+
+También detecta si Playwright tiene Chromium instalado y, si no, agrega
+`--sin-navegador` solo. En un Mac con macOS 12 eso es lo que hace que
+funcione sin pensarlo.
 
 ---
 

@@ -383,6 +383,7 @@ async def main(area, usar_navegador=True):
 
     hechos = ids_ya_bajados(path)
 
+    fase = 'arranque'
     if usar_navegador:
         try:
             async with async_playwright() as pw:
@@ -413,14 +414,25 @@ async def main(area, usar_navegador=True):
                 except Exception:
                     pass
 
-                n = await capturar(ctx.request, area, terminos, path,
-                                   hechos, fecha, periodo)
-                await browser.close()
+                fase = 'captura'
+                try:
+                    n = await capturar(ctx.request, area, terminos, path,
+                                       hechos, fecha, periodo)
+                finally:
+                    await browser.close()
         except SystemExit:
             raise
         except Exception as e:
-            print(f"\n  ⚠  el navegador falló ({type(e).__name__}: {e})")
-            print(f"  Reintentando en modo directo...")
+            if fase == 'captura':
+                # Ya se escribieron líneas: reintentar la captura entera
+                # duplicaría avisos en el JSONL. Se corta y se relanza a
+                # mano, que es reanudable y no duplica.
+                print(f"\n  ⛔  la captura se cortó ({type(e).__name__}: {e})")
+                print(f"  Lo bajado hasta acá quedó en disco. Relanzá el")
+                print(f"  mismo comando: es reanudable y no duplica.")
+                sys.exit(3)
+            print(f"\n  ⚠  el navegador no arrancó ({type(e).__name__}: {e})")
+            print(f"  Sigo en modo directo...")
             usar_navegador = False
 
     if not usar_navegador:
