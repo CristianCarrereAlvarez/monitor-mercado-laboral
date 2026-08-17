@@ -1,11 +1,22 @@
 """
-Panel de homologación: una página HTML con la evidencia ya calculada
-====================================================================
+Co-ocurrencia de carreras: qué se declara junto con qué
+=======================================================
 
-Genera `panel_homologacion.html`, un archivo autocontenido que se abre
-con doble clic y muestra los 528 nombres de `carrera_trabajando` con
-todo lo que hace falta para decidir a qué carrera SIES corresponde cada
-uno.
+Genera `coocurrencia_carreras.html`, un archivo autocontenido que se
+abre con doble clic y muestra, para cada uno de los 528 nombres de
+`carrera_trabajando`, con qué otras carreras, niveles, cargos y
+empleadores aparece.
+
+Se hizo para apoyar la homologación, pero lo que mide es co-ocurrencia
+y por eso se llama así. «Panel» ya nombra otra cosa en este proyecto —
+el panel longitudinal de duración de vacantes.
+
+LA BASE DE TODOS LOS PORCENTAJES
+  Los avisos específicos que declaran esa carrera. Ojo con la
+  diferencia de naturaleza: nivel, cargo y empleador son particiones
+  —cada aviso aporta a una sola categoría y suman 100%—, pero la
+  co-declaración **no**: un aviso declara varias carreras y aporta a
+  todas, así que la columna suma más de 100%. No es un error.
 
 POR QUÉ UNA PÁGINA Y NO UNA CONSULTA
   `mirar.py` contesta la pregunta de a un nombre por vez. Pero la
@@ -32,8 +43,8 @@ QUÉ MUESTRA, Y POR QUÉ ESO
   declara 504 carreras volvería a todas co-declaradas de todo.
 
 Uso:
-  ./panel.sh
-  python panel.py --maestras <dir> --salida <archivo.html>
+  ./coocurrencia.sh
+  python coocurrencia.py --maestras <dir> --salida <archivo.html>
 """
 
 import argparse, csv, html, json, os, re, sys, unicodedata
@@ -51,7 +62,7 @@ try:
 except Exception:
     CARRERAS_POR_AREA = {}
 
-TOPE_CO, TOPE_CARGO, TOPE_EMP, TOPE_EJ = 15, 10, 8, 5
+TOPE_CO, TOPE_CARGO, TOPE_EMP = 15, 10, 8
 
 
 def normalizar(s):
@@ -60,6 +71,18 @@ def normalizar(s):
     s = unicodedata.normalize('NFD', s.lower())
     s = ''.join(c for c in s if unicodedata.category(c) != 'Mn')
     return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9 ]', ' ', s)).strip()
+
+
+def top(contador, n=None):
+    """Los mayores, con desempate alfabético.
+
+    `Counter.most_common` desempata por orden de inserción, y acá se
+    inserta recorriendo conjuntos: dos corridas sobre los mismos datos
+    darían archivos distintos. Un archivo generado que cambia sin que
+    cambien los datos es ruido en el diff y desconfianza en el lector.
+    """
+    pares = sorted(contador.items(), key=lambda kv: (-kv[1], kv[0]))
+    return pares[:n] if n else pares
 
 
 def entero(v, d=0):
@@ -112,9 +135,7 @@ def construir(dir_maestras):
                     a.get('titulo') or '',
                     a.get('nivel_academico') or '',
                     a.get('empresa_nombre')
-                    or f"[confidencial {a.get('empresa_id')}]",
-                    a.get('url') or '',
-                    a.get('areas_scraping') or '')
+                    or f"[confidencial {a.get('empresa_id')}]")
 
     sies = sorted({s for c in CARRERAS_POR_AREA.values() for s in c.values()})
     sies_norm = {normalizar(s): s for s in sies}
@@ -126,21 +147,15 @@ def construir(dir_maestras):
             for otro in por_aviso[i]:
                 if otro != nombre:
                     co[otro] += 1
-        niv, carg, emp, area = Counter(), Counter(), Counter(), Counter()
-        ejemplos = []
-        for i in sorted(ids):
+        niv, carg, emp = Counter(), Counter(), Counter()
+        for i in ids:
             d = info.get(i)
             if not d:
                 continue
-            t, n_, e, u, ars = d
+            t, n_, e = d
             niv[n_ or '(sin nivel)'] += 1
             carg[t] += 1
             emp[e] += 1
-            for x in ars.split('|'):
-                if x.strip():
-                    area[x.strip()] += 1
-            if len(ejemplos) < TOPE_EJ:
-                ejemplos.append({'t': t, 'n': n_, 'u': u})
 
         h = hom.get(nombre, {})
         fichas.append({
@@ -154,12 +169,10 @@ def construir(dir_maestras):
             'sug': h.get('sugerencia', ''),
             'score': h.get('score', ''),
             'exacto': sies_norm.get(normalizar(nombre), ''),
-            'co': co.most_common(TOPE_CO),
-            'niv': niv.most_common(),
-            'carg': carg.most_common(TOPE_CARGO),
-            'emp': emp.most_common(TOPE_EMP),
-            'area': area.most_common(),
-            'ej': ejemplos,
+            'co': top(co, TOPE_CO),
+            'niv': top(niv),
+            'carg': top(carg, TOPE_CARGO),
+            'emp': top(emp, TOPE_EMP),
         })
 
     # nombres que solo aparecen en avisos genéricos: no tienen evidencia
@@ -175,8 +188,7 @@ def construir(dir_maestras):
                 'sug': h.get('sugerencia', ''),
                 'score': h.get('score', ''),
                 'exacto': sies_norm.get(normalizar(nombre), ''),
-                'co': [], 'niv': [], 'carg': [], 'emp': [], 'area': [],
-                'ej': [],
+                'co': [], 'niv': [], 'carg': [], 'emp': [],
             })
 
     fichas.sort(key=lambda f: (bool(f['sies']), -f['esp'], f['nombre']))
@@ -186,7 +198,7 @@ def construir(dir_maestras):
 PAGINA = """<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panel de homologación — Monitor Mercado Laboral</title>
+<title>Co-ocurrencia de carreras — Monitor Mercado Laboral</title>
 <style>
 :root{--bg:#fbfaf8;--fg:#22201d;--tenue:#6b6560;--linea:#e5e0d8;
       --tarjeta:#fff;--acento:#7a4f2b;--ok:#2f6b46;--okbg:#e8f3ec;
@@ -245,7 +257,7 @@ details{margin-top:22px;border-top:1px solid var(--linea);padding-top:12px}
 summary{cursor:pointer;font-size:13px;color:var(--tenue)}
 </style></head><body>
 <header>
-  <h1>Panel de homologación</h1>
+  <h1>Co-ocurrencia de carreras</h1>
   <div class="meta">__META__</div>
   <div class="controles">
     <input type="search" id="q" placeholder="Buscar nombre de carrera…"
@@ -295,21 +307,21 @@ function cuerpo(f){
       medio catálogo. No hay evidencia para decidir.</p>`;
     return h;
   }
+  h += `<p class="nota">Base de todos los porcentajes: los
+    <b>${f.esp} avisos específicos</b> que declaran esta carrera.</p>`;
   h += `<h3>Se declara junto con</h3>` + barras(f.co, f.esp);
   h += `<p class="nota">Es la evidencia más fuerte: con qué familia la
-    agrupan los propios empleadores.</p>`;
+    agrupan los propios empleadores. <b>Esta columna suma más de
+    100%</b> — un aviso declara varias carreras y cuenta en todas.</p>`;
   h += `<h3>Nivel académico</h3>` + barras(f.niv, f.esp);
   if(f.niv.length > 1) h += `<p class="nota">Si se reparte entre
     universitaria y técnica, puede necesitar dos filas con
     <code>nivel_condicion</code> distinto.</p>`;
   h += `<h3>Cargos reales</h3>` + barras(f.carg, f.esp);
   h += `<h3>Empleadores</h3>` + barras(f.emp, f.esp);
-  h += `<h3>Áreas del monitor</h3>` + barras(f.area, f.esp);
-  h += `<h3>Avisos de ejemplo</h3>` + f.ej.map(e =>
-    `<div class="fila" style="grid-template-columns:1fr">
-     <div><a href="${esc(e.u)}" target="_blank">${esc(e.t)}</a>
-     <span class="cnt"> · ${esc(e.n||'sin nivel')}</span></div></div>`
-    ).join('');
+  h += `<p class="nota">Cargos y empleadores son particiones: cada aviso
+    cuenta una sola vez. Se muestran los mayores, así que lo visible
+    suma menos de 100%.</p>`;
   return h;
 }
 
@@ -392,7 +404,7 @@ def main(dir_maestras, salida):
     ya = tot_esp - sum(f['esp'] for f in pend)
 
     print("=" * 64)
-    print("  PANEL DE HOMOLOGACIÓN")
+    print("  CO-OCURRENCIA DE CARRERAS")
     print("=" * 64)
     print(f"  nombres        : {len(fichas)}")
     print(f"  homologadas    : {len(fichas) - len(pend)}")
@@ -411,6 +423,6 @@ def main(dir_maestras, salida):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument('--maestras', default='maestras')
-    ap.add_argument('--salida', default='panel_homologacion.html')
+    ap.add_argument('--salida', default='coocurrencia_carreras.html')
     a = ap.parse_args()
     main(a.maestras, a.salida)
