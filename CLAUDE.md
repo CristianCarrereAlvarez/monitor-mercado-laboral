@@ -70,6 +70,7 @@ Lo que hay en el repo, y nada más:
 | `consolidar.py` | vigente — derivación |
 | `control.py` | chequeos de calidad + panel; lo corre `mensual.sh` solo |
 | `homologar.py` | genera la cola editable de homologación |
+| `mirar.py` / `mirar.sh` | qué hay detrás de un nombre de carrera; apoya la homologación |
 | `diccionario.py` | genera `DICCIONARIO.md` desde los datos reales |
 | `glosario.py` | las glosas de las columnas, escritas a mano |
 | `DICCIONARIO.md` | generado; **no editar a mano** |
@@ -141,6 +142,9 @@ cd ~/monitor-mercado-laboral && git pull --no-edit
 ./mensual.sh                  # las 10 áreas + consolidación
 ./capturar.sh "Agropecuaria"  # una sola área
 ./procesar.sh                 # consolidar + control + diccionario
+
+./mirar.sh "Ingeniería en Metalmecánica"   # qué avisos hay detrás
+./mirar.sh --buscar metal                  # qué nombres contienen "metal"
 ```
 
 `procesar.sh` es para cuando el post-proceso se corre aparte de la
@@ -1041,6 +1045,13 @@ Genera además `sugerencia` y `score` por solapamiento de tokens.
 "Ingeniería Civil" le sugiere "Ingeniería Civil Industrial" con score
 0,67, que es exactamente la confusión contra la que advierte §5.5. Sirven
 para ordenar la pantalla, no para decidir.
+
+**`mirar.sh` es la herramienta de apoyo.** Dado un nombre, muestra los
+avisos que lo declaran: cargos reales, empleadores, nivel académico y
+—lo más útil— **con qué otras carreras aparece declarado**. Esa
+co-declaración es evidencia de a qué familia pertenece el nombre; la
+similitud de strings no lo es. Excluye los genéricos, que si no harían
+aparecer las 504 como co-declaradas.
 
 Lo que sigue pendiente es el trabajo humano: abrir el CSV y completarlo.
 El diseño acordado, ya implementado en el archivo:
