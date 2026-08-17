@@ -783,7 +783,8 @@ def main(dir_crudo, dir_maestras):
     # Conjuntos reutilizados: la señal que no depende del umbral.
     comp = [(n, h) for h, n in conteo_conjuntos.items() if n > 1]
     n_en_comp = sum(n for n, _ in comp)
-    print(f"    conjuntos compartidos  : {len(comp)} conjuntos en "
+    s_ = '' if len(comp) == 1 else 's'
+    print(f"    conjuntos compartidos  : {len(comp)} conjunto{s_} en "
           f"{n_en_comp} avisos")
     if comp:
         tam = {a['hash_carreras']: a['n_carreras_declaradas']

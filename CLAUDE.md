@@ -65,6 +65,7 @@ Lo que hay en el repo, y nada más:
 | `SMLab.ipynb` | **punto de entrada**; el notebook de Colab que orquesta todo |
 | `mensual.sh` | corrida mensual completa: las 10 áreas en orden + consolidación |
 | `capturar.sh` | envoltorio de captura; resuelve la carpeta de datos y hace imposible el error de directorio |
+| `procesar.sh` | todo lo que va después de capturar: consolidar + control + diccionario |
 | `scraper_v9.py` | vigente — captura |
 | `consolidar.py` | vigente — derivación |
 | `control.py` | chequeos de calidad + panel; lo corre `mensual.sh` solo |
@@ -136,10 +137,27 @@ quién ejecuta qué.
 ### En la máquina de captura
 
 ```bash
-cd ~/monitor-mercado-laboral && git pull
+cd ~/monitor-mercado-laboral && git pull --no-edit
 ./mensual.sh                  # las 10 áreas + consolidación
 ./capturar.sh "Agropecuaria"  # una sola área
+./procesar.sh                 # consolidar + control + diccionario
 ```
+
+`procesar.sh` es para cuando el post-proceso se corre aparte de la
+captura — porque se cortó, porque cambió el código, o porque se quiere
+regenerar el diccionario. `mensual.sh` ya consolida y controla solo.
+
+Existe por lo mismo que `capturar.sh`. Las tres etapas necesitaban
+exportar la ruta de Drive, hacer `cd` y pasar rutas a mano en cada
+comando; pegar ese bloque en la terminal falla en cuanto algo se
+detiene a preguntar —un editor, una contraseña— porque el resto del
+texto se le mete adentro al que preguntó. Pasó tres veces en un día:
+una con vim tras un `git pull`, otra con el prompt de credenciales de
+`git push`, que se tragó las dos líneas siguientes y dejó `$D` sin
+definir.
+
+**Corolario de terminal: pegar los comandos de a uno.** Y usar
+`git pull --no-edit`, que no abre editor al mergear.
 
 Los envoltorios resuelven la carpeta de datos y el modo de sesión solos.
 Ver §4 para el detalle.
