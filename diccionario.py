@@ -37,6 +37,7 @@ Uso:
 """
 
 import argparse, csv, glob, json, os, sys
+from collections import defaultdict
 
 csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
 
@@ -119,9 +120,15 @@ def leer_crudo(dir_crudo, muestra=None):
     n = 0
     top, det = {}, {}
     orden_top, orden_det = [], []
-    # Hasta 6 valores distintos por clave. Es lo que permite escribir
-    # una glosa a partir de evidencia en vez de adivinar por el nombre.
+    # Hasta 6 valores distintos por clave, para poder escribir la glosa
+    # desde la evidencia en vez de adivinar por el nombre. Se cuenta
+    # aparte cuántos distintos hay EN TOTAL: sin eso, un campo con doce
+    # categorías se ve igual que uno con seis, y quien lea la muestra
+    # cree que vio el vocabulario completo. Pasó con
+    # nombreNivelAcademico, que mostró justo 6 y tocaba el tope.
     ejemplos = {}
+    distintos = defaultdict(set)
+    TOPE_DISTINTOS = 400   # cortar en campos de texto libre
 
     def contar(d, acc, orden, prefijo=''):
         for k, v in d.items():
@@ -130,9 +137,13 @@ def leer_crudo(dir_crudo, muestra=None):
                 orden.append(k)
             if v is not None and v != '' and v != [] and v != {}:
                 acc[k] += 1
-            e = ejemplos.setdefault(prefijo + k, [])
+            clave = prefijo + k
+            s = repr(v)
+            vistos = distintos[clave]
+            if len(vistos) <= TOPE_DISTINTOS:
+                vistos.add(s[:200])
+            e = ejemplos.setdefault(clave, [])
             if len(e) < 6:
-                s = repr(v)
                 s = s[:90] + '…' if len(s) > 90 else s
                 if s not in e:
                     e.append(s)
@@ -158,7 +169,10 @@ def leer_crudo(dir_crudo, muestra=None):
                     contar(d, det, orden_det, '_crudo.detalle.')
     return {'archivos': len(archivos), 'registros': n,
             'top': (orden_top, top), 'detalle': (orden_det, det),
-            'ejemplos': ejemplos, 'muestreado': bool(muestra)}
+            'ejemplos': ejemplos,
+            'distintos': {k: len(v) for k, v in distintos.items()},
+            'tope_distintos': TOPE_DISTINTOS,
+            'muestreado': bool(muestra)}
 
 
 def pct(x, base):
@@ -203,7 +217,8 @@ def bloque_columnas(cols_datos, llenos, n_filas, esquema, glosas,
     return filas, sin_doc, huerfanas, ausentes, manuales
 
 
-def main(dir_maestras, dir_crudo, salida, muestra, evidencia=False):
+def main(dir_maestras, dir_crudo, salida, muestra, evidencia=False,
+         clave=None):
     hay_esquema = bool(ESQUEMAS)
     out = []
     tot_sin, tot_huerf, tot_aus, tot_man, tot_cols = [], [], [], [], 0
@@ -222,7 +237,7 @@ def main(dir_maestras, dir_crudo, salida, muestra, evidencia=False):
             os.path.join(dir_maestras, tabla))
         tot_cols += len(cols)
         tot_sucios += [(tabla, c) for c in sucios]
-        grano, clave = TABLAS.get(tabla, ('—', '—'))
+        grano, llave = TABLAS.get(tabla, ('—', '—'))
         filas, sin_doc, huerf, aus, man = bloque_columnas(
             cols, llenos, n, ESQUEMAS.get(tabla), GLOSAS.get(tabla, {}),
             tabla in CON_COLUMNAS_MANUALES, hay_esquema)
@@ -233,7 +248,7 @@ def main(dir_maestras, dir_crudo, salida, muestra, evidencia=False):
             tot_man += [(tabla, c) for c in man]
 
         cuerpo.append(f"\n### `{tabla}`\n")
-        cuerpo.append(f"**Grano:** {grano} · **Clave:** `{clave}` · "
+        cuerpo.append(f"**Grano:** {grano} · **Clave:** `{llave}` · "
                       f"**{n:,} filas** · {len(cols)} columnas\n")
         if tabla in CON_COLUMNAS_MANUALES:
             cuerpo.append(
@@ -269,10 +284,10 @@ def main(dir_maestras, dir_crudo, salida, muestra, evidencia=False):
             "JSON se guarda íntegro para poder reprocesar sin volver a "
             "golpear el sitio.\n")
 
-        for titulo, clave, glosas_k in (
+        for titulo, campo, glosas_k in (
                 ("Envoltorio del registro", 'top', '_crudo'),
                 ("Claves de `detalle`", 'detalle', '_crudo.detalle')):
-            orden, cuentas = crudo[clave]
+            orden, cuentas = crudo[campo]
             g = GLOSAS.get(glosas_k, {})
             cuerpo_crudo.append(f"\n### {titulo}\n")
             cuerpo_crudo.append(f"{len(orden)} claves observadas.\n")
@@ -415,6 +430,34 @@ def main(dir_maestras, dir_crudo, salida, muestra, evidencia=False):
     print(f"\n  Archivo: {salida}")
     print("=" * 64 + "\n")
 
+    # --clave: mirar una clave puntual, tenga glosa o no. El bloque de
+    # evidencia solo muestra las que FALTAN documentar, así que sin esto
+    # una clave ya descrita es inauditable: `carreras` estuvo glosada
+    # como "lista de {nombreCarrera}" desde una sonda de 40 avisos y
+    # nunca se volvió a mirar contra los 17.744.
+    if clave and crudo:
+        k = clave.lower()
+        hallados = [(pre, c, cuentas)
+                    for pre, (orden, cuentas) in
+                    (('_crudo.', crudo['top']),
+                     ('_crudo.detalle.', crudo['detalle']))
+                    for c in orden if k in c.lower()]
+        print("=" * 64)
+        print(f"  CLAVES QUE CONTIENEN «{clave}»")
+        print("=" * 64)
+        if not hallados:
+            print(f"  Ninguna clave del crudo contiene «{clave}».")
+        for pre, c, cuentas in hallados:
+            nd = crudo['distintos'].get(pre + c, 0)
+            cuantos = (f"más de {crudo['tope_distintos']}"
+                       if nd > crudo['tope_distintos'] else str(nd))
+            print(f"\n  ── {pre}{c}   (relleno "
+                  f"{pct(cuentas.get(c, 0), crudo['registros'])}, "
+                  f"{cuantos} valores distintos)")
+            for v in crudo['ejemplos'].get(pre + c, []):
+                print(f"       {v}")
+        print("=" * 64 + "\n")
+
     if evidencia and crudo:
         print("=" * 64)
         print("  EVIDENCIA PARA LAS CLAVES DEL CRUDO SIN DOCUMENTAR")
@@ -430,10 +473,17 @@ def main(dir_maestras, dir_crudo, salida, muestra, evidencia=False):
                      else '_crudo.') + c
             cuentas = crudo['detalle'][1] if t_ == '_crudo.detalle' \
                 else crudo['top'][1]
+            nd = crudo['distintos'].get(clave, 0)
+            cuantos = (f"más de {crudo['tope_distintos']}"
+                       if nd > crudo['tope_distintos'] else str(nd))
             print(f"\n  ── {c}   (relleno "
-                  f"{pct(cuentas.get(c, 0), crudo['registros'])})")
+                  f"{pct(cuentas.get(c, 0), crudo['registros'])}, "
+                  f"{cuantos} valores distintos)")
+            muestra_n = min(6, nd)
             for v in crudo['ejemplos'].get(clave, []):
                 print(f"       {v}")
+            if nd > muestra_n:
+                print(f"       … y {nd - muestra_n} valores distintos más")
         print("=" * 64 + "\n")
 
 
@@ -447,7 +497,9 @@ if __name__ == "__main__":
                     help='líneas por archivo de crudo (relleno aproximado)')
     ap.add_argument('--evidencia', action='store_true',
                     help='muestra valores reales de las claves sin glosa')
+    ap.add_argument('--clave', default=None,
+                    help='inspecciona una clave del crudo, tenga glosa o no')
     a = ap.parse_args()
     destino = a.salida or os.path.join(
         os.path.dirname(os.path.abspath(__file__)), 'DICCIONARIO.md')
-    main(a.maestras, a.crudo, destino, a.muestra, a.evidencia)
+    main(a.maestras, a.crudo, destino, a.muestra, a.evidencia, a.clave)
