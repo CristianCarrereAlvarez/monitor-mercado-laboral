@@ -343,6 +343,29 @@ Es un caso de la lección 5 en su forma más barata de cometer: nadie
 inventó un dato, se inventó una **derivación** y se publicó sin abrir
 una sola de las URLs que producía.
 
+### El listado trae cosas que el detalle no
+
+El crudo guarda entera la respuesta del buscador, además del detalle.
+Nunca se había mirado; documentada en agosto 2026, tiene 13 claves y
+tres que **no** son la misma que su homónima del detalle:
+
+| clave del listado | qué la hace distinta |
+|---|---|
+| `descripcionOferta` | **fragmento de resultados, con el término buscado resaltado en `<strong>`** |
+| `fechaPublicacion` | trae **hora**: `2026-08-12 12:10`. El detalle solo da la fecha |
+| `geolocalizacion` | string `lat,lon` en el orden que dice; el del detalle viene invertido |
+
+**El fragmento resaltado es el hallazgo con más futuro.** §5.8 tuvo que
+deducir por qué un aviso entró en una búsqueda leyendo los cuatro
+campos y buscando la raíz a mano. El listado ya lo dice: el `<strong>`
+marca dónde matcheó. Eso convierte el diagnóstico por término (§7
+pendiente 4) de una heurística por tokens —que ya falló dos veces— en
+una lectura directa del dato. **Sin volver a scrapear**: está en el
+crudo desde agosto.
+
+La hora de publicación también se está descartando: `consolidar.py` usa
+`fechaPublicacionFormatoIngles` del detalle, que es solo `aaaa-mm-dd`.
+
 ### Campos muertos
 
 `tiempoContrato`, `documentosRequeridos`, `archivosAdjuntos`,

@@ -504,6 +504,69 @@ GLOSAS = {
             "tenerla permite reprocesar sin volver a golpear el sitio.",
     },
 
+    # ══════════════════════════════════════════════════════════════
+    # Claves de `listado`: la respuesta del buscador, no del detalle.
+    # Documentadas en agosto 2026 con `--evidencia` sobre los 17.744
+    # registros. Varias NO son iguales a su homónima del detalle, y esas
+    # diferencias son lo que importa.
+    '_crudo.listado': {
+        'idOferta':
+            "Id del aviso, el mismo del envoltorio y del detalle.",
+        'nombreCargo':
+            "Título del aviso. `consolidar.py` prefiere el del detalle y "
+            "usa este de respaldo cuando el detalle falla.",
+        'urlLogo':
+            "Mismo valor que en el detalle: logo de la empresa, con "
+            "`logo_generico_azul.jpg` cuando el aviso es confidencial.",
+        'nombreEmpresa':
+            "Nombre de la empresa **ya enmascarado**: en los avisos "
+            "confidenciales dice literalmente `Empresa Confidencial`. La "
+            "identidad no está acá sino en `idCompany` del detalle.",
+        'descripcionOferta':
+            "**No es la descripción completa: es el fragmento de "
+            "resultados de búsqueda.** Viene recortado con puntos "
+            "suspensivos y con el término buscado resaltado en "
+            "`<strong>`: «…estudiante de `<strong>`Administración de "
+            "Empresas`</strong>` (Técnico o…». O sea que **muestra dónde "
+            "matcheó la búsqueda**, que es exactamente lo que §5.8 tuvo "
+            "que inferir. `consolidar.py` usa el del detalle, que sí "
+            "está completo.",
+        'publicadoHace':
+            "Texto de pantalla, «Hace 4 días». **Relativo al momento de "
+            "la consulta**, así que envejece mal en el crudo; 85 valores "
+            "distintos. Para fechas, usar `fechaPublicacion`.",
+        'ubicacion':
+            "Texto `Comuna, Región` — «Huechuraba, Metropolitana de "
+            "Santiago». 203 valores distintos. Es un string, no el dict "
+            "del detalle; `consolidar.py` lo parte por la coma cuando el "
+            "detalle no trae ubicación.",
+        'ofertaDestacada':
+            "Booleano. Alimenta `avisos.destacada`.",
+        'geolocalizacion':
+            "Coordenadas como string `lat,lon` — "
+            "`'-23.617728,-70.3915701'`. **Este sí está en el orden que "
+            "sugiere el nombre**, a diferencia de "
+            "`detalle.ubicacion.coordenadas`, que dice `Point` y viene "
+            "[lat, lon]. Vacío en el 12% de los registros.",
+        'nombreJornada':
+            "Jornada declarada. **10 valores distintos**, más de los que "
+            "se ven en una muestra chica del detalle. Mezcla extensión "
+            "horaria, modalidad y tipo de contrato — de acá salen "
+            "`jornada`, `modalidad` y `tipo_contrato`.",
+        'ofertaInclusiva':
+            "Booleano. Alimenta `avisos.inclusiva`.",
+        'ofertaExclusiva':
+            "**Campo muerto**: un solo valor distinto en 17.744 "
+            "registros, siempre `False`.",
+        'fechaPublicacion':
+            "Fecha y **hora** de publicación: `'2026-08-12 12:10'`. Es "
+            "más preciso que el detalle, que trae solo la fecha "
+            "(`'12/08/2026'`). **El pipeline descarta la hora**: "
+            "`consolidar.py` usa `fechaPublicacionFormatoIngles` del "
+            "detalle, que es `aaaa-mm-dd`. Si alguna vez interesa la "
+            "hora de publicación, está en el crudo.",
+    },
+
     # Claves del detalle. Solo las que están verificadas; el resto va a
     # aparecer como SIN DOCUMENTAR, que es la respuesta honesta.
     '_crudo.detalle': {
