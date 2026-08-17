@@ -157,47 +157,71 @@ def bloque_genericos(avisos):
 
 def bloque_conjuntos(avisos):
     """Perfiles guardados: un empleador que adjunta la misma lista de
-    carreras a todos sus avisos. Es la señal que el umbral por conteo no
-    captura — medido en agosto 2026, hay plantillas de 20 carreras y
-    concursos multidisciplinarios legítimos de 25."""
+    carreras a todos sus avisos.
+
+    OJO CON LA VERSIÓN INGENUA. Contar cuántos avisos comparten un
+    conjunto, sin más, no mide esto: en agosto 2026 el conjunto más
+    compartido eran 194 avisos de 22 empresas distintas declarando UNA
+    carrera. Eso no es una plantilla, es una carrera frecuente. Lo que
+    identifica al perfil guardado es que el conjunto pertenezca a UNA
+    sola empresa y tenga tamaño suficiente para no informar nada."""
     print(f"\n── 3. Conjuntos de carreras reutilizados")
     if not any('hash_carreras' in a for a in avisos):
         print("   sin columna hash_carreras: reconsolidá para tenerla")
         return
-    tam = {}
-    emp = defaultdict(set)
+
+    tam, emp = {}, defaultdict(set)
+    cuenta = Counter()
     for a in avisos:
         h = a.get('hash_carreras')
         if not h:
             continue
         tam[h] = entero(a.get('n_carreras_declaradas'))
         emp[h].add(a.get('empresa_id'))
-    cuenta = Counter(a.get('hash_carreras') for a in avisos
-                     if a.get('hash_carreras'))
-    comp = [(n, h) for h, n in cuenta.items() if n > 1]
+        cuenta[h] += 1
+
+    comp = [h for h, n in cuenta.items() if n > 1]
     if not comp:
         print("   ningún conjunto se repite entre avisos")
         return
-    n_avisos = sum(n for n, _ in comp)
-    s = '' if len(comp) == 1 else 's'
-    print(f"   {len(comp)} conjunto{s} compartido{s} por {n_avisos} avisos "
-          f"({pct(n_avisos, len(avisos))})")
-    print(f"   Un conjunto repetido es un perfil guardado del empleador, "
-          f"no")
-    print(f"   una decisión por vacante. No depende de "
-          f"UMBRAL_AVISO_GENERICO.")
-    print(f"\n   {'avisos':>6} {'carreras':>9} {'empresas':>9}  "
-          f"{'bajo umbral':>11}")
-    for n, h in sorted(comp, reverse=True)[:10]:
-        marca = 'sí' if tam[h] <= UMBRAL else 'no'
-        print(f"   {n:>6} {tam[h]:>9} {len(emp[h]):>9}  {marca:>11}")
-    ocultos = [(n, h) for n, h in comp if tam[h] <= UMBRAL]
-    if ocultos:
-        so = '' if len(ocultos) == 1 else 's'
-        print(f"\n   ⚠  {len(ocultos)} conjunto{so} reutilizado{so} "
-              f"queda{'' if so else 'n'} POR DEBAJO del umbral")
-        print(f"      ({sum(n for n, _ in ocultos)} avisos): cuentan como "
-              f"específicos y no lo son.")
+    print(f"   {len(comp)} conjuntos se repiten, en "
+          f"{sum(cuenta[h] for h in comp)} avisos "
+          f"({pct(sum(cuenta[h] for h in comp), len(avisos))})")
+    print(f"   La mayoría son conjuntos chicos y comunes —una carrera "
+          f"pedida por")
+    print(f"   muchas empresas— y no significan nada. La señal son los "
+          f"de UNA empresa.")
+
+    plant = sorted((h for h in comp if len(emp[h]) == 1),
+                   key=lambda h: (-tam[h], -cuenta[h]))
+    if not plant:
+        print("\n   No hay ningún conjunto repetido dentro de una sola "
+              "empresa.")
+        return
+    print(f"\n   PLANTILLAS — mismo conjunto, misma empresa, >1 aviso")
+    print(f"   {len(plant)} conjuntos en "
+          f"{sum(cuenta[h] for h in plant)} avisos")
+    print(f"\n   {'avisos':>6} {'carreras':>9}  {'empresa_id':<12} "
+          f"{'sobre umbral':>12}")
+    for h in plant[:12]:
+        eid = next(iter(emp[h]))
+        print(f"   {cuenta[h]:>6} {tam[h]:>9}  {str(eid):<12} "
+              f"{('sí' if tam[h] > UMBRAL else 'no'):>12}")
+
+    # PISO no clasifica nada: solo separa las plantillas que además
+    # declaran tantas carreras que el aviso deja de informar cuál
+    # busca. Es un filtro de lectura, no un umbral de análisis.
+    PISO = 10
+    ciegas = [h for h in plant if tam[h] >= PISO and tam[h] <= UMBRAL]
+    if ciegas:
+        print(f"\n   ⚠  {len(ciegas)} plantillas de {PISO} o más "
+              f"carreras quedan BAJO el umbral")
+        print(f"      ({sum(cuenta[h] for h in ciegas)} avisos): cuentan "
+              f"como específicas y son perfiles")
+        print(f"      guardados. Es lo que el umbral por tamaño no ve.")
+    else:
+        print(f"\n   ✓ ninguna plantilla de {PISO}+ carreras queda bajo "
+              f"el umbral")
 
 
 # ══════════════════════════════════════════════════════════

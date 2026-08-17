@@ -544,6 +544,127 @@ GLOSAS = {
             "**Describe al empleador, no al área del monitor.**",
         'mostrarSueldo': "Si el aviso publica el sueldo. 2,9% lo hace.",
 
+        # ── documentadas en agosto 2026 con `diccionario.py --evidencia`
+        # sobre los 17.744 registros del crudo. Cada una a partir de sus
+        # valores reales, no del nombre.
+        'idOferta':
+            "Id del aviso, el mismo que `aviso_id`. Redundante con la "
+            "clave del registro.",
+        'nombreCargo':
+            "Título del aviso, texto libre del empleador. Es lo que "
+            "alimenta `avisos.titulo`.",
+        'nombreTipoCargo':
+            "Familia del cargo según el empleador: Administrativo, "
+            "Comercial, Analista, Práctica, Estudiante, Otro "
+            "Profesional. Vocabulario chico y controlado.",
+        'descripcionOferta':
+            "Cuerpo del aviso, **en HTML** (`<p>`, `<ul>`, entidades y "
+            "emojis escapados). `consolidar.py` lo limpia. Es el campo "
+            "sobre el que el buscador hace match por prefijo, así que "
+            "es el origen del ruido de los términos (§5.8).",
+        'cantidadVacantes':
+            "Cuántas vacantes declara el aviso. Valores observados de 1 "
+            "a 10.",
+        'categorias':
+            "Etiquetas propias del empleador: `{idOpcionCategoria, "
+            "nombreOpcionCategoria, idCategoriaPadre}`. **Solo el 6% de "
+            "los avisos la trae.** Los valores observados son "
+            "mayormente nombres de empresa o marca (Salcobrand, "
+            "INCHCAPE, Vital Jugos) y alguno genérico (Cargos "
+            "Profesionales). Inferencia, no verificado: parece una "
+            "taxonomía interna de cada cliente, no del sitio.",
+        'nombreJornada':
+            "Jornada declarada: Jornada Completa, Part Time, Por "
+            "Turnos, En terreno, Mixta (Teletrabajo + Presencial), "
+            "Práctica. **Mezcla tres dimensiones** y de acá salen "
+            "`jornada`, `modalidad` y `tipo_contrato`.",
+        'sueldo':
+            "Monto en pesos. **Vale 0 cuando el aviso no publica "
+            "sueldo**, que es el 97% de los casos; por eso "
+            "`avisos.sueldo_liquido` solo lo copia si `mostrarSueldo` "
+            "es verdadero y el monto es mayor que cero.",
+        'nombreNivelAcademico':
+            "Nivel exigido: Básica, Media, Técnico medio/ colegio "
+            "técnico, Técnico profesional superior, Universitaria, "
+            "Magíster. Es el desempate de los casos 1:N en la "
+            "homologación.",
+        'nombreSituacionAcademica':
+            "Situación exigida: En curso, Próximo a graduarse, "
+            "Egresado, Graduado, Indiferente.",
+        'requisitosMinimos':
+            "Requisitos, **en HTML**. Segundo campo donde el buscador "
+            "hace match, después de la descripción.",
+        'preguntas':
+            "Preguntas de filtro que el postulante debe responder: "
+            "`{idPregunta, orden, pregunta, tipoPregunta}`. **89% de "
+            "los avisos las trae** — es de los campos mejor poblados "
+            "que nadie está usando. Varias piden justo lo que al "
+            "monitor le falta: «¿Cuál es su carrera, casa de "
+            "estudios?», «Indícanos tus estudios».",
+        'ofertaInclusiva':
+            "Si el aviso se declara inclusivo. Booleano.",
+        'fechaPublicacion':
+            "Fecha de publicación en formato chileno `dd/mm/aaaa`. "
+            "`consolidar.py` prefiere `fechaPublicacionFormatoIngles`, "
+            "que no tiene ambigüedad de orden.",
+        'fechaExpiracion':
+            "Fecha de expiración en `dd/mm/aaaa`. Ver "
+            "`fechaExpiracionFormatoIngles`.",
+        'fechaPublicacionFormatoIngles':
+            "Fecha de publicación en ISO `aaaa-mm-dd`. **Es la que usa "
+            "el pipeline.**",
+        'fechaExpiracionFormatoIngles':
+            "Fecha de expiración en ISO. Ojo: es la vigencia "
+            "declarada, no la baja real — las bajas ocurren mucho "
+            "antes.",
+        'urlLogo':
+            "URL del logo. **Chivato limpio de confidencialidad**: si "
+            "termina en `logo_generico_azul.jpg` el aviso es "
+            "confidencial; si no, la ruta incluye el id de empresa "
+            "(`/company/93562/logo.png`), que coincide con "
+            "`idCompany`.",
+        'finalizaEn':
+            "Texto para mostrar en pantalla: «Finaliza en 56 días». "
+            "**Derivado y relativo al momento de la consulta**, no un "
+            "dato: se calcula contra `fechaExpiracion`. No usarlo para "
+            "análisis; envejece mal en el crudo.",
+        'publicadoHace':
+            "Texto de pantalla: «Publicada hace 4 días por». Mismo "
+            "problema que `finalizaEn` — relativo al momento de la "
+            "consulta. Usar `fechaPublicacionFormatoIngles`.",
+        'idiomas':
+            "Idiomas exigidos con nivel por destreza: `{nombreIdioma, "
+            "nombreEscrito, nombreHablado, nombreLectura}`, en escala "
+            "bajo/medio/alto/nativo. **Solo el 12% de los avisos.** No "
+            "se está extrayendo a ninguna maestra.",
+        'indicadorAtractivo':
+            "Widget de marketing del sitio: `{texto, color, icono}` con "
+            "valores como «Postula ahora», «Popular», «Sé uno de los "
+            "primeros». Describe cómo se muestra el aviso, no el "
+            "trabajo. 15% de los avisos.",
+        'evaluacionesInternasOnline':
+            "**Campo muerto**: 0% de relleno en los 17.744 registros. "
+            "Siempre `None` o lista vacía.",
+        'evaluaciones':
+            "Pruebas de selección asociadas al aviso. **2% de los "
+            "avisos**, y en lo observado todas del proveedor `hirint`.",
+        'linkPostulacionExterno':
+            "URL de postulación en un ATS externo (airavirtual.com en "
+            "lo observado, a veces con subdominio del empleador). **8% "
+            "de los avisos**: son los que no se postulan por "
+            "trabajando.cl.",
+        'tipoCurriculumAceptado':
+            "`NORMAL` o `ARCHIVO`: si acepta el CV de la plataforma o "
+            "un archivo subido.",
+        'usaScoreScreening':
+            "Si el aviso usa el puntaje automático de filtrado. "
+            "Booleano.",
+        'esBuscable':
+            "Si el aviso aparece en búsquedas. **True en el 100% de lo "
+            "observado**, lo que es esperable: todos estos avisos "
+            "llegaron justamente por la búsqueda. No dice nada sobre "
+            "los avisos que el monitor no ve.",
+
         # Campos muertos: vacíos en los 40 avisos de la sonda.
         'tiempoContrato':
             "**Campo muerto**: vacío en los 40 avisos de la sonda.",

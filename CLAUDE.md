@@ -921,9 +921,23 @@ compatibilidad; conviene retirarlas en una limpieza posterior.
   observaciones lo inflaría tantas veces como áreas haya visto cada
   aviso — lección 3.
 
-  El bloque 3 de `control.py` lo reporta y avisa cuántos conjuntos
-  reutilizados quedan **por debajo** del umbral: son los que hoy
-  cuentan como específicos sin serlo.
+  **Contar la reutilización a secas no mide nada.** Primera medición
+  (agosto 2026): 562 conjuntos repetidos en 3.593 avisos (39,4%), pero
+  los mayores son **194 avisos de 22 empresas declarando UNA carrera**.
+  Eso no es una plantilla, es una carrera frecuente. La primera versión
+  del bloque 3 avisaba que "3.574 avisos cuentan como específicos y no
+  lo son", que es falso.
+
+  Lo que identifica al perfil guardado son dos condiciones juntas: que
+  el conjunto pertenezca a **una sola empresa** y que sea **grande
+  suficiente** para que el aviso deje de informar qué carrera busca. El
+  bloque 3 lista las plantillas así definidas, ordenadas por tamaño, y
+  avisa cuáles quedan bajo el umbral — esas sí cuentan como específicas
+  sin serlo.
+
+  El piso de tamaño del reporte (10) **no clasifica nada**: es un filtro
+  de lectura para que la lista quepa en pantalla. La columna guarda el
+  dato completo.
 
 - `instituciones.n_avisos_especificos` — **usa el umbral de carreras
   como proxy y es imperfecto.** Un aviso con 19 carreras declaró 35 de
