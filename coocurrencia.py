@@ -4,26 +4,35 @@ Co-ocurrencia de carreras: qué se declara junto con qué
 
 Genera `coocurrencia_carreras.html`, un archivo autocontenido que se
 abre con doble clic y muestra, para cada uno de los 528 nombres de
-`carrera_trabajando`, con qué otras carreras aparece declarado, qué
-nivel académico exigen esos avisos y qué empleadores los publican.
+`carrera_trabajando`, **con qué otras carreras aparece declarado**.
 
 Se hizo para apoyar la homologación, pero lo que mide es co-ocurrencia
 y por eso se llama así. «Panel» ya nombra otra cosa en este proyecto —
 el panel longitudinal de duración de vacantes.
 
-LA BASE DE TODOS LOS PORCENTAJES
-  Los avisos específicos que declaran esa carrera. Ojo con la
-  diferencia de naturaleza: nivel y empleador son particiones —cada
-  aviso aporta a una sola categoría—, pero la co-declaración **no**: un
-  aviso declara varias carreras y aporta a todas, así que esa columna
-  suma más de 100%. No es un error, y la página lo dice leyendo en
-  palabras la primera fila del ranking.
+POR QUÉ SOLO ESO
+  La página llegó a mostrar además nivel académico, cargos, empleadores
+  y áreas. Se fueron todos: el cargo es texto libre del empleador y
+  necesita mucho trabajo antes de significar algo; el área es
+  trazabilidad de captura, no un atributo del aviso; y nivel y
+  empleador, aunque se leen bien, no ayudan a decidir a qué carrera
+  SIES corresponde un nombre. Una página con cinco gráficos invita a
+  mirar los cinco.
 
-NIVEL ACADÉMICO: LO QUE ESE CAMPO NO DICE
-  La API entrega **un solo nivel por aviso**. Que un empleador acepte
-  un técnico o un profesional para el mismo cargo no aparece ahí; se
-  expresa declarando carreras de distinto nivel, o sea en el gráfico de
-  co-declaración.
+  Lo decisivo es la co-declaración: si un nombre aparece una y otra vez
+  junto a otros de la misma familia, el empleador está diciendo a cuál
+  pertenece. Eso es evidencia. El parecido de strings no lo es — la
+  columna `sugerencia` le propone "Ingeniería Civil Industrial" a
+  "Ingeniería Civil", que son carreras distintas.
+
+LA BASE DE LOS PORCENTAJES
+  Los avisos específicos que declaran esa carrera. **La columna suma
+  más de 100%** y está bien: un aviso declara varias carreras y cuenta
+  en todas. En vez de explicarlo en abstracto, la página lee en
+  palabras la primera fila de cada ranking.
+
+  Los avisos genéricos quedan fuera de todos los conteos. Uno que
+  declara 504 carreras volvería a todas co-declaradas de todo.
 
 POR QUÉ UNA PÁGINA Y NO UNA CONSULTA
   `mirar.py` contesta la pregunta de a un nombre por vez. Pero la
@@ -34,20 +43,6 @@ POR QUÉ UNA PÁGINA Y NO UNA CONSULTA
 
   La contra: es una foto. Cuando llegue la corrida de septiembre hay que
   regenerarla. No es grave, porque la taxonomía saturó en 528 nombres.
-
-QUÉ MUESTRA, Y POR QUÉ ESO
-  Lo decisivo son las **carreras co-declaradas**: si un nombre aparece
-  una y otra vez junto a otros de la misma familia, el empleador está
-  diciendo a cuál pertenece. Eso es evidencia. El parecido de strings no
-  lo es — la columna `sugerencia` le propone "Ingeniería Civil
-  Industrial" a "Ingeniería Civil", que son carreras distintas.
-
-  El nivel académico está para decidir `nivel_condicion`: si un nombre
-  se reparte entre universitaria y técnica, probablemente sea un caso
-  1:N y haya que partir la fila.
-
-  Los avisos genéricos quedan fuera de todos los conteos. Uno que
-  declara 504 carreras volvería a todas co-declaradas de todo.
 
 Uso:
   ./coocurrencia.sh
@@ -69,7 +64,7 @@ try:
 except Exception:
     CARRERAS_POR_AREA = {}
 
-TOPE_CO, TOPE_EMP = 15, 8
+TOPE_CO = 15
 
 
 def normalizar(s):
@@ -132,17 +127,9 @@ def construir(dir_maestras):
         decl[nombre].add(f['aviso_id'])
         por_aviso[f['aviso_id']].add(nombre)
 
-    # datos del aviso: streaming, avisos.csv pesa decenas de MB
-    interesan = set(por_aviso)
-    info = {}
-    with open(M('avisos.csv'), encoding='utf-8-sig', newline='') as f:
-        for a in csv.DictReader(f):
-            if a['aviso_id'] in interesan:
-                info[a['aviso_id']] = (
-                    a.get('nivel_academico') or '',
-                    a.get('empresa_nombre')
-                    or f"[confidencial {a.get('empresa_id')}]")
-
+    # Ya no hace falta abrir avisos.csv: con la página reducida a la
+    # co-ocurrencia, todo sale de aviso_carrera. Son 28 MB menos por
+    # corrida.
     sies = sorted({s for c in CARRERAS_POR_AREA.values() for s in c.values()})
     sies_norm = {normalizar(s): s for s in sies}
 
@@ -153,15 +140,6 @@ def construir(dir_maestras):
             for otro in por_aviso[i]:
                 if otro != nombre:
                     co[otro] += 1
-        niv, emp = Counter(), Counter()
-        for i in ids:
-            d = info.get(i)
-            if not d:
-                continue
-            n_, e = d
-            niv[n_ or '(sin nivel)'] += 1
-            emp[e] += 1
-
         h = hom.get(nombre, {})
         fichas.append({
             'nombre': nombre,
@@ -173,8 +151,6 @@ def construir(dir_maestras):
             'quien': h.get('revisado_por', ''),
             'exacto': sies_norm.get(normalizar(nombre), ''),
             'co': top(co, TOPE_CO),
-            'niv': top(niv),
-            'emp': top(emp, TOPE_EMP),
         })
 
     # nombres que solo aparecen en avisos genéricos: no tienen evidencia
@@ -188,7 +164,7 @@ def construir(dir_maestras):
                 'rel': h.get('tipo_relacion', ''),
                 'quien': h.get('revisado_por', ''),
                 'exacto': sies_norm.get(normalizar(nombre), ''),
-                'co': [], 'niv': [], 'emp': [],
+                'co': [],
             })
 
     fichas.sort(key=lambda f: (bool(f['sies']), -f['esp'], f['nombre']))
@@ -306,7 +282,6 @@ function cuerpo(f){
       medio catálogo. No hay evidencia para decidir.</p>`;
     return h;
   }
-  h += `<h3>Se declara junto con</h3>`;
   if(f.co.length){
     const [k, v] = f.co[0];
     h += `<p class="lectura">De los <b>${f.esp}</b> avisos que declaran
@@ -316,15 +291,6 @@ function cuerpo(f){
   }
   h += barras(f.co, f.esp);
 
-  h += `<h3>Nivel formativo declarado por el empleador</h3>`
-     + barras(f.niv, f.esp)
-     + `<p class="nota">Opción <b>única</b> por aviso, de una lista
-        cerrada de 9 valores. Es lo que el empleador declaró, no el
-        rango que acepta: si el aviso sirve para un técnico o para un
-        profesional, eso se ve arriba, en las carreras
-        co-declaradas.</p>`;
-
-  h += `<h3>Empleadores</h3>` + barras(f.emp, f.esp);
   return h;
 }
 
