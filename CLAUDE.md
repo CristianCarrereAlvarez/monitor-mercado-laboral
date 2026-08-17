@@ -1058,21 +1058,29 @@ aparecer las 504 como co-declaradas.
 **`coocurrencia.sh` es lo mismo, precalculado para los 528 nombres.**
 Escribe `<datos>/coocurrencia_carreras.html`, un archivo autocontenido
 que se abre con doble clic: sin terminal, sin servidor, sin internet, y
-queda en Drive. Cada nombre trae sus carreras co-declaradas, niveles,
-cargos y empleadores, con buscador y filtro pendientes/resueltas, más
-las 198 carreras SIES al final para copiar el nombre exacto sin errores
-de tipeo.
+queda en Drive. Cada nombre trae sus carreras co-declaradas, el nivel
+académico de esos avisos y sus empleadores, con buscador y filtro
+pendientes/resueltas, más las 198 carreras SIES al final para copiar el
+nombre exacto sin errores de tipeo.
 
 **Se llama co-ocurrencia y no «panel» por dos razones.** Es lo que mide
 de verdad; y «panel» ya nombra otra cosa en este proyecto — el panel
 longitudinal de duración de vacantes (§6).
 
 **Todos los porcentajes tienen la misma base**: los avisos específicos
-que declaran esa carrera. Pero nivel, cargo y empleador son
-**particiones** —cada aviso cuenta una vez, suman 100%— y la
-co-declaración **no**: un aviso declara varias carreras y cuenta en
-todas, así que esa columna pasa del 100%. La página lo dice en cada
-sección.
+que declaran esa carrera. Pero nivel y empleador son **particiones**
+—cada aviso cuenta una vez— y la co-declaración **no**: un aviso
+declara varias carreras y cuenta en todas, así que esa columna pasa del
+100%. En vez de explicarlo en abstracto, la página **lee en palabras la
+primera fila** de cada ranking: «De los 9 avisos que declaran X, 9 —el
+100%— declaran además Y».
+
+**El nivel académico dice menos de lo que parece.** La API entrega un
+solo valor por aviso, así que ese gráfico muestra qué nivel puso el
+empleador en el formulario, no qué niveles acepta. Un aviso que sirve
+igual para un contador técnico que para un contador auditor lo expresa
+**declarando las dos carreras**, o sea en el gráfico de co-declaración.
+La sección lo aclara para que no se lea de más.
 
 La salida es determinista: mismos datos, archivo idéntico. Los empates
 se desempatan alfabéticamente en vez de por orden de inserción, que

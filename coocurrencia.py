@@ -4,8 +4,8 @@ Co-ocurrencia de carreras: qué se declara junto con qué
 
 Genera `coocurrencia_carreras.html`, un archivo autocontenido que se
 abre con doble clic y muestra, para cada uno de los 528 nombres de
-`carrera_trabajando`, con qué otras carreras, niveles, cargos y
-empleadores aparece.
+`carrera_trabajando`, con qué otras carreras aparece declarado, qué
+nivel académico exigen esos avisos y qué empleadores los publican.
 
 Se hizo para apoyar la homologación, pero lo que mide es co-ocurrencia
 y por eso se llama así. «Panel» ya nombra otra cosa en este proyecto —
@@ -13,10 +13,17 @@ el panel longitudinal de duración de vacantes.
 
 LA BASE DE TODOS LOS PORCENTAJES
   Los avisos específicos que declaran esa carrera. Ojo con la
-  diferencia de naturaleza: nivel, cargo y empleador son particiones
-  —cada aviso aporta a una sola categoría y suman 100%—, pero la
-  co-declaración **no**: un aviso declara varias carreras y aporta a
-  todas, así que la columna suma más de 100%. No es un error.
+  diferencia de naturaleza: nivel y empleador son particiones —cada
+  aviso aporta a una sola categoría—, pero la co-declaración **no**: un
+  aviso declara varias carreras y aporta a todas, así que esa columna
+  suma más de 100%. No es un error, y la página lo dice leyendo en
+  palabras la primera fila del ranking.
+
+NIVEL ACADÉMICO: LO QUE ESE CAMPO NO DICE
+  La API entrega **un solo nivel por aviso**. Que un empleador acepte
+  un técnico o un profesional para el mismo cargo no aparece ahí; se
+  expresa declarando carreras de distinto nivel, o sea en el gráfico de
+  co-declaración.
 
 POR QUÉ UNA PÁGINA Y NO UNA CONSULTA
   `mirar.py` contesta la pregunta de a un nombre por vez. Pero la
@@ -62,7 +69,7 @@ try:
 except Exception:
     CARRERAS_POR_AREA = {}
 
-TOPE_CO, TOPE_CARGO, TOPE_EMP = 15, 10, 8
+TOPE_CO, TOPE_EMP = 15, 8
 
 
 def normalizar(s):
@@ -132,7 +139,6 @@ def construir(dir_maestras):
         for a in csv.DictReader(f):
             if a['aviso_id'] in interesan:
                 info[a['aviso_id']] = (
-                    a.get('titulo') or '',
                     a.get('nivel_academico') or '',
                     a.get('empresa_nombre')
                     or f"[confidencial {a.get('empresa_id')}]")
@@ -147,14 +153,13 @@ def construir(dir_maestras):
             for otro in por_aviso[i]:
                 if otro != nombre:
                     co[otro] += 1
-        niv, carg, emp = Counter(), Counter(), Counter()
+        niv, emp = Counter(), Counter()
         for i in ids:
             d = info.get(i)
             if not d:
                 continue
-            t, n_, e = d
+            n_, e = d
             niv[n_ or '(sin nivel)'] += 1
-            carg[t] += 1
             emp[e] += 1
 
         h = hom.get(nombre, {})
@@ -166,12 +171,9 @@ def construir(dir_maestras):
             'area_sies': h.get('area_sies', ''),
             'rel': h.get('tipo_relacion', ''),
             'quien': h.get('revisado_por', ''),
-            'sug': h.get('sugerencia', ''),
-            'score': h.get('score', ''),
             'exacto': sies_norm.get(normalizar(nombre), ''),
             'co': top(co, TOPE_CO),
             'niv': top(niv),
-            'carg': top(carg, TOPE_CARGO),
             'emp': top(emp, TOPE_EMP),
         })
 
@@ -185,10 +187,8 @@ def construir(dir_maestras):
                 'area_sies': h.get('area_sies', ''),
                 'rel': h.get('tipo_relacion', ''),
                 'quien': h.get('revisado_por', ''),
-                'sug': h.get('sugerencia', ''),
-                'score': h.get('score', ''),
                 'exacto': sies_norm.get(normalizar(nombre), ''),
-                'co': [], 'niv': [], 'carg': [], 'emp': [],
+                'co': [], 'niv': [], 'emp': [],
             })
 
     fichas.sort(key=lambda f: (bool(f['sies']), -f['esp'], f['nombre']))
@@ -247,6 +247,8 @@ h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;
  flex:none}
 .txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nota{color:var(--tenue);font-size:12.5px;margin:6px 0 0}
+.lectura{margin:2px 0 9px;font-size:13.5px;line-height:1.5;
+ border-left:3px solid var(--barra);padding-left:10px}
 a{color:var(--acento)}
 code{background:rgba(125,125,125,.14);padding:1px 5px;border-radius:4px;
  font-size:12.5px}
@@ -296,9 +298,6 @@ function cuerpo(f){
   let h = '';
   if(f.exacto) h += `<p class="nota">Coincide exactamente con la carrera
      SIES <code>${esc(f.exacto)}</code>.</p>`;
-  if(f.sug) h += `<p class="nota">Sugerencia automática:
-     <code>${esc(f.sug)}</code> (score ${esc(f.score)}) —
-     <b>no es una decisión</b>, solo parecido de palabras.</p>`;
   if(f.sies) h += `<p class="nota">Ya homologada a
      <code>${esc(f.sies)}</code> · ${esc(f.area_sies)} ·
      ${esc(f.rel)} ${f.quien ? '· ' + esc(f.quien) : ''}</p>`;
@@ -307,21 +306,24 @@ function cuerpo(f){
       medio catálogo. No hay evidencia para decidir.</p>`;
     return h;
   }
-  h += `<p class="nota">Base de todos los porcentajes: los
-    <b>${f.esp} avisos específicos</b> que declaran esta carrera.</p>`;
-  h += `<h3>Se declara junto con</h3>` + barras(f.co, f.esp);
-  h += `<p class="nota">Es la evidencia más fuerte: con qué familia la
-    agrupan los propios empleadores. <b>Esta columna suma más de
-    100%</b> — un aviso declara varias carreras y cuenta en todas.</p>`;
-  h += `<h3>Nivel académico</h3>` + barras(f.niv, f.esp);
-  if(f.niv.length > 1) h += `<p class="nota">Si se reparte entre
-    universitaria y técnica, puede necesitar dos filas con
-    <code>nivel_condicion</code> distinto.</p>`;
-  h += `<h3>Cargos reales</h3>` + barras(f.carg, f.esp);
+  h += `<h3>Se declara junto con</h3>`;
+  if(f.co.length){
+    const [k, v] = f.co[0];
+    h += `<p class="lectura">De los <b>${f.esp}</b> avisos que declaran
+      <b>${esc(f.nombre)}</b>, <b>${v}</b> —el
+      ${(v*100/f.esp).toFixed(0)}%— declaran <b>además</b>
+      ${esc(k)}.</p>`;
+  }
+  h += barras(f.co, f.esp);
+
+  h += `<h3>Nivel académico exigido por el aviso</h3>`
+     + barras(f.niv, f.esp)
+     + `<p class="nota">La API entrega <b>un solo nivel por aviso</b>.
+        Que un empleador acepte técnico o profesional para el mismo
+        cargo no se ve acá: se ve arriba, en las carreras
+        co-declaradas.</p>`;
+
   h += `<h3>Empleadores</h3>` + barras(f.emp, f.esp);
-  h += `<p class="nota">Cargos y empleadores son particiones: cada aviso
-    cuenta una sola vez. Se muestran los mayores, así que lo visible
-    suma menos de 100%.</p>`;
   return h;
 }
 
