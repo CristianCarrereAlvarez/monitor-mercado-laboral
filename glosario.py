@@ -220,10 +220,21 @@ GLOSAS = {
             "experiencia' con `exp_anios` mayor que cero. **Marcar la "
             "contradicción en el dato en vez de resolverla a ciegas.**",
         'nivel_academico':
-            "`nombreNivelAcademico` (Universitaria, Técnico profesional "
-            "superior…). Es el desempate disponible para los casos 1:N "
-            "de la homologación, donde SIES separa 'Ingeniería en' de "
-            "'Técnico en' y trabajando no.",
+            "**Nivel formativo declarado por el empleador.** Copia "
+            "literal de `nombreNivelAcademico` del detalle, sin ninguna "
+            "derivación.\n\n"
+            "**Es una opción única**: trabajando.cl le hace elegir un "
+            "solo valor de una lista cerrada, así que un aviso nunca "
+            "declara dos niveles. Está en el 100% de los avisos y toma "
+            "**9 valores** (frecuencias de agosto 2026): Universitaria (4.943) · Técnico profesional superior (2.722) · Media (792) · Técnico medio/ colegio técnico (490) · Básica (57) · Magíster (49) · Doctorado (29) · Diplomado (22) · Postgrado (21).\n\n"
+            "**Cómo usarla.** Es lo que el empleador declaró, no el "
+            "rango que acepta: un aviso abierto a un contador técnico o "
+            "a un contador auditor igual declara un solo nivel, y esa "
+            "apertura se expresa **declarando varias carreras** "
+            "(`aviso_carrera`). Y **no es una escala ordenada**: "
+            "`Postgrado` se superpone con `Magíster` y `Doctorado`, y "
+            "`Diplomado` es un curso posterior a un título, no un grado. "
+            "No ordenar ni promediar; usarla como categoría.",
         'situacion_academica':
             "`nombreSituacionAcademica` (titulado, egresado, cursando…).",
 
@@ -654,10 +665,10 @@ GLOSAS = {
             "`avisos.sueldo_liquido` solo lo copia si `mostrarSueldo` "
             "es verdadero y el monto es mayor que cero.",
         'nombreNivelAcademico':
-            "Nivel exigido: Básica, Media, Técnico medio/ colegio "
-            "técnico, Técnico profesional superior, Universitaria, "
-            "Magíster. Es el desempate de los casos 1:N en la "
-            "homologación.",
+            "Nivel formativo declarado por el empleador, **una sola "
+            "opción por aviso** de una lista cerrada de 9 valores. "
+            "Alimenta `avisos.nivel_academico`, donde está la glosa "
+            "completa con las frecuencias y las advertencias de uso.",
         'nombreSituacionAcademica':
             "Situación exigida: En curso, Próximo a graduarse, "
             "Egresado, Graduado, Indiferente.",

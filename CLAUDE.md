@@ -312,6 +312,7 @@ otra cosa y no se hace.
 | `instituciones` | lista de `{idInstitucion, idInstitucionSqlServer, nombreInstitucion}` — **sí trae ID** |
 | `habilidades` | `{nombreHabilidad, nombreNivel}`; nivel casi siempre vacío |
 | `ubicacion.coordenadas` | ver trampa abajo |
+| `nombreNivelAcademico` | **opción única** de una lista de 9 valores; nivel formativo declarado por el empleador |
 | `aniosExperiencia` + `nombreOperadorExperiencia` | se contradicen a veces |
 | `candidadPostulaciones` | typo de la API (no `cantidad`); viene `null` seguido |
 | `candidadVisualizaciones` | idem |

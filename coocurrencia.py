@@ -316,11 +316,12 @@ function cuerpo(f){
   }
   h += barras(f.co, f.esp);
 
-  h += `<h3>Nivel académico exigido por el aviso</h3>`
+  h += `<h3>Nivel formativo declarado por el empleador</h3>`
      + barras(f.niv, f.esp)
-     + `<p class="nota">La API entrega <b>un solo nivel por aviso</b>.
-        Que un empleador acepte técnico o profesional para el mismo
-        cargo no se ve acá: se ve arriba, en las carreras
+     + `<p class="nota">Opción <b>única</b> por aviso, de una lista
+        cerrada de 9 valores. Es lo que el empleador declaró, no el
+        rango que acepta: si el aviso sirve para un técnico o para un
+        profesional, eso se ve arriba, en las carreras
         co-declaradas.</p>`;
 
   h += `<h3>Empleadores</h3>` + barras(f.emp, f.esp);

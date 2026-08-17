@@ -179,6 +179,21 @@ def leer_crudo(dir_crudo, muestra=None):
             'muestreado': bool(muestra)}
 
 
+def celda(s):
+    """Deja una glosa apta para una celda de tabla markdown.
+
+    Una glosa puede tener párrafos —a veces hacen falta— y un `|` en
+    medio de un ejemplo. Cualquiera de los dos parte la fila en dos y
+    desalinea la tabla entera desde ahí para abajo. Se escapan acá y no
+    en glosario.py: quien escribe una glosa no tiene por qué saber en
+    qué formato se va a imprimir.
+    """
+    return (str(s).replace('|', '\\|')
+                  .replace('\r\n', '\n')
+                  .replace('\n\n', '<br><br>')
+                  .replace('\n', '<br>'))
+
+
 def pct(x, base):
     return f"{x * 100 / base:.0f}%" if base else "—"
 
@@ -208,13 +223,13 @@ def bloque_columnas(cols_datos, llenos, n_filas, esquema, glosas,
             g = '**SIN DOCUMENTAR**'
             sin_doc.append(c)
         relleno = pct(llenos.get(c, 0), n_filas)
-        filas.append(f"| `{c}` | {origen} | {relleno} | {g} |")
+        filas.append(f"| `{c}` | {origen} | {relleno} | {celda(g)} |")
 
     for c in esquema:
         if c not in cols_datos:
             ausentes.append(c)
             g = glosas.get(c) or '**SIN DOCUMENTAR**'
-            filas.append(f"| `{c}` | ⚠ ausente | — | {g} |")
+            filas.append(f"| `{c}` | ⚠ ausente | — | {celda(g)} |")
 
     huerfanas = [c for c in glosas
                  if c not in cols_datos and c not in esquema]
@@ -306,7 +321,7 @@ def main(dir_maestras, dir_crudo, salida, muestra, evidencia=False,
                     sin.append(k)
                 cuerpo_crudo.append(
                     f"| `{k}` | {pct(cuentas[k], crudo['registros'])} "
-                    f"| {d} |")
+                    f"| {celda(d)} |")
             huerf = [k for k in g if k not in cuentas]
             if huerf:
                 cuerpo_crudo.append(
