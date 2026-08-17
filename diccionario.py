@@ -118,8 +118,8 @@ def leer_crudo(dir_crudo, muestra=None):
     if not archivos:
         return None
     n = 0
-    top, det = {}, {}
-    orden_top, orden_det = [], []
+    top, det, lst = {}, {}, {}
+    orden_top, orden_det, orden_lst = [], [], []
     # Hasta 6 valores distintos por clave, para poder escribir la glosa
     # desde la evidencia en vez de adivinar por el nombre. Se cuenta
     # aparte cuántos distintos hay EN TOTAL: sin eso, un campo con doce
@@ -167,8 +167,12 @@ def leer_crudo(dir_crudo, muestra=None):
                 d = reg.get('detalle')
                 if isinstance(d, dict):
                     contar(d, det, orden_det, '_crudo.detalle.')
+                l = reg.get('listado')
+                if isinstance(l, dict):
+                    contar(l, lst, orden_lst, '_crudo.listado.')
     return {'archivos': len(archivos), 'registros': n,
             'top': (orden_top, top), 'detalle': (orden_det, det),
+            'listado': (orden_lst, lst),
             'ejemplos': ejemplos,
             'distintos': {k: len(v) for k, v in distintos.items()},
             'tope_distintos': TOPE_DISTINTOS,
@@ -286,7 +290,8 @@ def main(dir_maestras, dir_crudo, salida, muestra, evidencia=False,
 
         for titulo, campo, glosas_k in (
                 ("Envoltorio del registro", 'top', '_crudo'),
-                ("Claves de `detalle`", 'detalle', '_crudo.detalle')):
+                ("Claves de `detalle`", 'detalle', '_crudo.detalle'),
+                ("Claves de `listado`", 'listado', '_crudo.listado')):
             orden, cuentas = crudo[campo]
             g = GLOSAS.get(glosas_k, {})
             cuerpo_crudo.append(f"\n### {titulo}\n")
@@ -440,7 +445,8 @@ def main(dir_maestras, dir_crudo, salida, muestra, evidencia=False,
         hallados = [(pre, c, cuentas)
                     for pre, (orden, cuentas) in
                     (('_crudo.', crudo['top']),
-                     ('_crudo.detalle.', crudo['detalle']))
+                     ('_crudo.detalle.', crudo['detalle']),
+                     ('_crudo.listado.', crudo['listado']))
                     for c in orden if k in c.lower()]
         print("=" * 64)
         print(f"  CLAVES QUE CONTIENEN «{clave}»")

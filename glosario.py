@@ -68,8 +68,14 @@ GLOSAS = {
             "longitudinal y lo que deduplica un mismo aviso encontrado "
             "en varias áreas.",
         'url':
-            "URL pública. Se arma con `slug` cuando la API lo trae "
-            "(~10% de los casos) y con `aviso_id` cuando no.",
+            "**Advertencia: la mayoría de estas URLs no funcionan.** "
+            "`consolidar.py` usa `slug` cuando la API lo trae (~10% de "
+            "los casos) y, cuando no, arma "
+            "`https://www.trabajando.cl/trabajo/{aviso_id}` — un patrón "
+            "que **nunca se verificó** y que en agosto 2026 se comprobó "
+            "que no resuelve. Está pendiente encontrar la forma correcta "
+            "y corregir la derivación; hasta entonces, no usar esta "
+            "columna para abrir avisos.
 
         # ── panel longitudinal ──
         'primera_vez_visto':
