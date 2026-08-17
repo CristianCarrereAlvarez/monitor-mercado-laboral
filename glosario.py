@@ -75,7 +75,7 @@ GLOSAS = {
             "que **nunca se verificó** y que en agosto 2026 se comprobó "
             "que no resuelve. Está pendiente encontrar la forma correcta "
             "y corregir la derivación; hasta entonces, no usar esta "
-            "columna para abrir avisos.
+            "columna para abrir avisos.",
 
         # ── panel longitudinal ──
         'primera_vez_visto':
