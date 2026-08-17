@@ -71,6 +71,7 @@ Lo que hay en el repo, y nada más:
 | `control.py` | chequeos de calidad + panel; lo corre `mensual.sh` solo |
 | `homologar.py` | genera la cola editable de homologación |
 | `mirar.py` / `mirar.sh` | qué hay detrás de un nombre de carrera; apoya la homologación |
+| `panel.py` / `panel.sh` | genera `panel_homologacion.html`: la misma evidencia, para los 528 nombres de una vez |
 | `diccionario.py` | genera `DICCIONARIO.md` desde los datos reales |
 | `glosario.py` | las glosas de las columnas, escritas a mano |
 | `DICCIONARIO.md` | generado; **no editar a mano** |
@@ -145,6 +146,7 @@ cd ~/monitor-mercado-laboral && git pull --no-edit
 
 ./mirar.sh "Ingeniería en Metalmecánica"   # qué avisos hay detrás
 ./mirar.sh --buscar metal                  # qué nombres contienen "metal"
+./panel.sh                                 # el panel HTML de homologación
 ```
 
 `procesar.sh` es para cuando el post-proceso se corre aparte de la
@@ -1052,6 +1054,17 @@ avisos que lo declaran: cargos reales, empleadores, nivel académico y
 co-declaración es evidencia de a qué familia pertenece el nombre; la
 similitud de strings no lo es. Excluye los genéricos, que si no harían
 aparecer las 504 como co-declaradas.
+
+**`panel.sh` es lo mismo, precalculado para los 528 nombres.** Escribe
+`<datos>/panel_homologacion.html`, un archivo autocontenido que se abre
+con doble clic: sin terminal, sin servidor, sin internet, y queda en
+Drive. Cada nombre trae sus co-declaradas, niveles, cargos, empleadores
+y avisos de ejemplo, con buscador y filtro pendientes/resueltas, más las
+198 carreras SIES al final para copiar el nombre exacto sin errores de
+tipeo.
+
+Es una foto: hay que regenerarlo después de cada corrida mensual. No
+molesta, porque la taxonomía saturó en 528 (§5.9).
 
 Lo que sigue pendiente es el trabajo humano: abrir el CSV y completarlo.
 El diseño acordado, ya implementado en el archivo:
