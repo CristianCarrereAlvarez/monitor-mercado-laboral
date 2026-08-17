@@ -471,14 +471,20 @@ def main(dir_maestras, dir_crudo, salida, muestra, evidencia=False,
         print("  Valores reales de cada clave sin glosa. Escribí la glosa")
         print("  a partir de esto, no del nombre de la clave. Si los")
         print("  valores no alcanzan para saber qué es, dejala pendiente.")
-        pendientes = [(t_, c) for t_, c in tot_sin if t_.startswith('_crudo')]
+        # Una fuente por sección del crudo. Con un if de dos ramas, las
+        # claves de `listado` se buscaban con el prefijo del envoltorio
+        # y en su diccionario de cuentas: salían con 0% de relleno y sin
+        # ejemplos, o sea que el bloque parecía informar "campo vacío"
+        # cuando en realidad estaba mirando donde no era.
+        FUENTES = {'_crudo': ('_crudo.', crudo['top'][1]),
+                   '_crudo.detalle': ('_crudo.detalle.', crudo['detalle'][1]),
+                   '_crudo.listado': ('_crudo.listado.', crudo['listado'][1])}
+        pendientes = [(t_, c) for t_, c in tot_sin if t_ in FUENTES]
         if not pendientes:
             print("\n  No queda ninguna.")
         for t_, c in pendientes:
-            clave = ('_crudo.detalle.' if t_ == '_crudo.detalle'
-                     else '_crudo.') + c
-            cuentas = crudo['detalle'][1] if t_ == '_crudo.detalle' \
-                else crudo['top'][1]
+            prefijo, cuentas = FUENTES[t_]
+            clave = prefijo + c
             nd = crudo['distintos'].get(clave, 0)
             cuantos = (f"más de {crudo['tope_distintos']}"
                        if nd > crudo['tope_distintos'] else str(nd))
