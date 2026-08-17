@@ -61,14 +61,26 @@ def tokens(s):
 
 
 def hay_prefijo(termino_tokens, texto):
-    """¿Algún token del texto empieza con algún token del término?
+    """¿Están TODOS los tokens del término en el texto, por prefijo?
 
-    Imita cómo matchea el buscador del sitio, que es por prefijo y no por
-    palabra completa: por eso "Derecho" trae avisos que dicen "derechos".
-    Sin esto, el diagnóstico subestima la precisión del término."""
+    Prefijo y no palabra completa, para imitar al buscador del sitio:
+    por eso "Derecho" cuenta un aviso que dice "derechos".
+
+    TODOS y no alguno. La primera versión pedía que coincidiera algún
+    token, y eso rompe cualquier término de más de una palabra: como
+    "ingeniería" es un token de "Ingeniería Naval", todo aviso que
+    declarara cualquier ingeniería contaba como afín, y el término salía
+    con 75,8% de precisión sobre 1.420 avisos. Igual con los 60 términos
+    que empiezan en "Técnico en".
+
+    El bug no se veía en Derecho —un término de una sola palabra, donde
+    ambas versiones coinciden— que fue justamente contra lo que se
+    validó la métrica."""
     tt = tokens(texto)
-    return any(a.startswith(t) or t.startswith(a)
-               for t in termino_tokens for a in tt)
+    if not termino_tokens:
+        return False
+    return all(any(a.startswith(t) or t.startswith(a) for a in tt)
+               for t in termino_tokens)
 
 
 def leer(path):

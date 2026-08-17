@@ -1121,6 +1121,18 @@ para comparar términos entre sí, que es para lo que se usa. Lo que sigue
 pendiente es persistir un `estado_termino`; hoy es un informe, no un
 registro.
 
+**Corrección (agosto 2026).** La primera versión pedía que coincidiera
+**algún** token del término, y eso invalidaba todo término de más de una
+palabra: como "ingeniería" es un token de "Ingeniería Naval", cualquier
+aviso que declarara cualquier ingeniería contaba como afín, y el término
+salía con 75,8% de precisión sobre 1.420 avisos. Los 60 términos que
+empiezan en "Técnico en" tenían el mismo problema.
+
+El bug no se veía en Derecho —una sola palabra, donde ambas versiones
+dan lo mismo— que fue justo el caso contra el que se validó la métrica.
+**Validar una métrica contra un solo caso, y encima el más simple, no la
+valida.** Ahora exige todos los tokens.
+
 **5. Memoria de `consolidar.py`.** Carga todos los crudos en RAM antes
 de escribir. **Primera medición (agosto 2026): aguantó.** 10 archivos,
 ~142 MB de JSONL, 17.744 registros, en un MacBook y sin incidente.
