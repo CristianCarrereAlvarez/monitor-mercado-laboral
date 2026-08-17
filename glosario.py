@@ -68,14 +68,15 @@ GLOSAS = {
             "longitudinal y lo que deduplica un mismo aviso encontrado "
             "en varias áreas.",
         'url':
-            "**Advertencia: la mayoría de estas URLs no funcionan.** "
-            "`consolidar.py` usa `slug` cuando la API lo trae (~10% de "
-            "los casos) y, cuando no, arma "
-            "`https://www.trabajando.cl/trabajo/{aviso_id}` — un patrón "
-            "que **nunca se verificó** y que en agosto 2026 se comprobó "
-            "que no resuelve. Está pendiente encontrar la forma correcta "
-            "y corregir la derivación; hasta entonces, no usar esta "
-            "columna para abrir avisos.",
+            "URL pública del aviso, con la forma "
+            "`/trabajo/{id}-{titulo-normalizado}`. La API trae `slug` "
+            "solo en el 7% de los avisos; para el resto se reconstruye "
+            "desde el título con `slugificar()`. La regla se validó "
+            "contra los 676 que sí lo traen y lo reproduce en el "
+            "**100%**. Vacía cuando el título no deja ningún carácter "
+            "utilizable — mejor sin URL que con una rota. (Hasta agosto "
+            "2026 se emitía `/trabajo/{id}` a secas, que no resuelve: "
+            "nueve de cada diez URLs apuntaban a ninguna parte.)",
 
         # ── panel longitudinal ──
         'primera_vez_visto':

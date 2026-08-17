@@ -315,7 +315,7 @@ otra cosa y no se hace.
 | `aniosExperiencia` + `nombreOperadorExperiencia` | se contradicen a veces |
 | `candidadPostulaciones` | typo de la API (no `cantidad`); viene `null` seguido |
 | `candidadVisualizaciones` | idem |
-| `slug` | null en ~90% de los casos |
+| `slug` | null en el 93% de los avisos, pero **reconstruible** |
 | `nombreMoneda` | siempre "Pesos Chilenos" en lo observado |
 
 **Trampa de coordenadas.** `ubicacion.coordenadas` dice
@@ -323,6 +323,25 @@ otra cosa y no se hace.
 Verificado con Antofagasta: `[-23.617728, -70.3915701]`. Alimentar esto
 a una librería geoespacial estándar sin invertir pone los puntos en
 Somalia.
+
+### La URL pública se reconstruye
+
+`slug` tiene la forma `{idOferta}-{nombreCargo normalizado}`: minúsculas,
+sin tildes, y cualquier corrida de caracteres no alfanuméricos colapsada
+en un guion. La API lo trae en **676 de 9.125 avisos (7%)**.
+
+Hasta agosto 2026, `consolidar.py` emitía `/trabajo/{aviso_id}` cuando
+faltaba — un patrón **nunca probado contra el sitio**, y que no resuelve:
+la columna `url` apuntaba a ninguna parte para el 93% de los avisos.
+
+`slugificar()` reconstruye el slug desde el título. **Validado contra los
+676 que traen el valor real: lo reproduce en el 100%.** Por eso se aplica
+al 93% restante sin volver a golpear el sitio, y las URLs viejas se
+arreglan con solo reconsolidar.
+
+Es un caso de la lección 5 en su forma más barata de cometer: nadie
+inventó un dato, se inventó una **derivación** y se publicó sin abrir
+una sola de las URLs que producía.
 
 ### Campos muertos
 
