@@ -10,3 +10,8 @@ __pycache__/
 # con "untracked working tree file would be overwritten".
 crudo/
 maestras/
+
+# HTML generados: viven en Drive junto a los datos. Se ignoran por si una
+# corrida sin --salida los deja en el repo (ver la trampa de arriba).
+coocurrencia_carreras.html
+variables_maestras.html

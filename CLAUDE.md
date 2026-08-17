@@ -73,6 +73,7 @@ Lo que hay en el repo, y nada más:
 | `mirar.py` / `mirar.sh` | qué hay detrás de un nombre de carrera; apoya la homologación |
 | `coocurrencia.py` / `coocurrencia.sh` | genera `coocurrencia_carreras.html`: la misma evidencia, para los 528 nombres de una vez |
 | `diccionario.py` | genera `DICCIONARIO.md` desde los datos reales |
+| `variables.py` / `variables.sh` | genera `variables_maestras.html`: las mismas glosas, para consultar mientras se trabaja |
 | `glosario.py` | las glosas de las columnas, escritas a mano |
 | `DICCIONARIO.md` | generado; **no editar a mano** |
 | `carreras_sies_2026.py` | vigente — catálogo + índices; lo usan v9 y consolidar |
@@ -106,6 +107,31 @@ nuevos.
 sabe qué es una columna, se deja afuera y el diccionario la lista como
 pendiente. Un hueco visible es información; una glosa plausible pero
 falsa, no.
+
+**Las mismas glosas, en una página que se abre con doble clic:**
+
+```bash
+./variables.sh
+```
+
+Deja `<datos>/variables_maestras.html` en Drive: las 115 columnas de las
+nueve maestras, con buscador sobre el nombre y sobre el texto de la
+definición, y una banda al margen en las 34 columnas cuya glosa existe
+sobre todo para evitar una mala lectura (`n_corridas_visto` no cuenta
+corridas, `sies_por_termino` sobre-atribuye por diseño, los tres valores
+de `calidad_duracion` no se promedian juntos).
+
+No reemplaza a `DICCIONARIO.md`, hace lo contrario. El diccionario es el
+documento de **control**: cruza las glosas con los datos y los esquemas
+reales para que se vea lo que falta, y por eso necesita las maestras y el
+crudo a mano. La página es la **referencia**: no lee ni maestras ni
+crudo —sale entera de `consolidar.py`, `homologar.py` y `glosario.py`—,
+así que corre en cualquier máquina. El texto es el mismo objeto en los
+dos casos, `glosario.py`; hay un solo lugar donde escribir.
+
+Se regenera cuando cambia el **código**, igual que el diccionario. La
+lista de columnas con banda de cautela es editorial y vive en
+`variables.py`: si se escribe una glosa de ese tipo, hay que sumarla ahí.
 
 Borrados del repo (agosto 2026), por si aparecen mencionados en notas
 viejas: `scraper_v7.py`, `scraper_v8.py`, `sonda_detalle.py`,
@@ -147,6 +173,7 @@ cd ~/monitor-mercado-laboral && git pull --no-edit
 ./mirar.sh "Ingeniería en Metalmecánica"   # qué avisos hay detrás
 ./mirar.sh --buscar metal                  # qué nombres contienen "metal"
 ./coocurrencia.sh                          # el dashboard HTML de co-ocurrencia
+./variables.sh                             # la referencia HTML de variables
 ```
 
 `procesar.sh` es para cuando el post-proceso se corre aparte de la
