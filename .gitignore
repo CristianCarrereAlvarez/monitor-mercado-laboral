@@ -13,5 +13,5 @@ maestras/
 
 # HTML generados: viven en Drive junto a los datos. Se ignoran por si una
 # corrida sin --salida los deja en el repo (ver la trampa de arriba).
-coocurrencia_carreras.html
+coocurrencia_programas.html
 variables_maestras.html

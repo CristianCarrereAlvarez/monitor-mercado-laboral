@@ -75,7 +75,7 @@ Lo que hay en el repo, y nada más:
 | `programas_propios.csv` | catálogo propio: 205 programas, con genérica SIES, niveles e ISCED-F |
 | `isced_f_2013.csv` | ISCED-F 2013 (UNESCO): 138 códigos amplio/estrecho/detallado |
 | `mirar.py` / `mirar.sh` | qué hay detrás de un nombre de carrera; apoya la homologación |
-| `coocurrencia.py` / `coocurrencia.sh` | genera `coocurrencia_carreras.html`: la misma evidencia, para los 528 nombres de una vez |
+| `coocurrencia.py` / `coocurrencia.sh` | genera `coocurrencia_programas.html`: qué programa se pide junto con qué, y qué nombres de aviso lo alimentan |
 | `diccionario.py` | genera `DICCIONARIO.md` desde los datos reales |
 | `variables.py` / `variables.sh` | genera `variables_maestras.html`: las mismas glosas, para consultar mientras se trabaja |
 | `glosario.py` | las glosas de las columnas, escritas a mano |
@@ -1305,39 +1305,42 @@ co-declaración es evidencia de a qué familia pertenece el nombre; la
 similitud de strings no lo es. Excluye los genéricos, que si no harían
 aparecer las 504 como co-declaradas.
 
-**`coocurrencia.sh` es lo mismo, precalculado para los 528 nombres.**
-Escribe `<datos>/coocurrencia_carreras.html`, un archivo autocontenido
+**`coocurrencia.sh` es la misma evidencia, precalculada y agregada.**
+Escribe `<datos>/coocurrencia_programas.html`, un archivo autocontenido
 que se abre con doble clic: sin terminal, sin servidor, sin internet, y
-queda en Drive. Cada nombre trae **solo sus carreras co-declaradas**,
-con buscador y filtro pendientes/resueltas, más las 198 carreras SIES
-al final para copiar el nombre exacto sin errores de tipeo.
+queda en Drive.
 
-Llegó a mostrar además nivel académico, cargos, empleadores y áreas, y
-se fueron todos: el cargo es texto libre y necesita mucho trabajo antes
-de significar algo, el área es trazabilidad de captura, y nivel y
-empleador se leen bien pero no ayudan a decidir a qué carrera SIES
-corresponde un nombre. Una página con cinco gráficos invita a mirar los
-cinco.
+**La unidad es el programa propio, no `carrera_trabajando`** (18 agosto
+2026). Cuando la unidad era el nombre del aviso, la página servía para
+decidir la homologación —a qué familia pertenece un nombre— y ese
+trabajo ya está hecho. Con el programa como unidad, `Ingeniería en
+Computación e Informática` reúne los nombres que antes estaban
+dispersos en `Ingeniería en Informática / Sistemas`, `Ingeniería en
+Gestión e Informática` y otros: la co-ocurrencia deja de estar partida
+por variantes de redacción y dice algo sobre **formaciones**.
 
-**Se llama co-ocurrencia y no «panel» por dos razones.** Es lo que mide
-de verdad; y «panel» ya nombra otra cosa en este proyecto — el panel
-longitudinal de duración de vacantes (§6).
+Cada programa trae dos rankings:
 
-**La base de los porcentajes** son los avisos específicos que declaran
-esa carrera, y **la columna suma más de 100%**: un aviso declara varias
-carreras y cuenta en todas. En vez de explicarlo en abstracto, la
-página **lee en palabras la primera fila**: «De los 9 avisos que
-declaran X, 9 —el 100%— declaran además Y».
+1. **con qué otros programas se pide** en el mismo aviso;
+2. **qué nombres de `carrera_trabajando` se homologaron ahí**, con
+   cuántos avisos aportó cada uno.
 
-Ya no lee `avisos.csv`: con la página reducida a la co-ocurrencia, todo
-sale de `aviso_carrera.csv`.
+El segundo existe para no perder de vista de dónde sale cada número:
+`Administración de Empresas e Ing. Asociadas` junta nueve nombres de
+aviso, y conviene verlo antes de citar su total. El buscador entra por
+los dos —uno se acuerda de «Analista Programador», no del programa— y
+hay filtro por área SIES.
 
-La salida es determinista: mismos datos, archivo idéntico. Los empates
-se desempatan alfabéticamente en vez de por orden de inserción, que
-dependía del recorrido de conjuntos.
+Lee `aviso_programa.csv`, así que **no vuelve a resolver el join**: eso
+lo hizo `consolidar.py`. Si el archivo no está, dice qué correr.
 
-Es una foto: hay que regenerarlo después de cada corrida mensual. No
-molesta, porque la taxonomía saturó en 528 (§5.9).
+Quedan afuera, y la página lo dice en el encabezado con la cifra: los
+avisos genéricos, los campos ISCED —`Ingeniería` o `Diseño` no son un
+programa, y ponerlos como una unidad más mezclaría un campo con una
+carrera—, los niveles sueltos y los cargos.
+
+Al final lista los programas del catálogo que **ningún aviso específico
+pide**. No es ausencia de demanda: es ausencia en esta corrida.
 
 Lo que sigue pendiente es el trabajo humano: abrir el CSV y completarlo.
 El diseño acordado, ya implementado en el archivo:

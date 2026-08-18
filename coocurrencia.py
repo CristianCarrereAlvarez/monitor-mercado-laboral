@@ -1,54 +1,47 @@
 """
-Co-ocurrencia de carreras: qué se declara junto con qué
-=======================================================
+Co-ocurrencia de programas: qué se pide junto con qué
+=====================================================
 
-Genera `coocurrencia_carreras.html`, un archivo autocontenido que se
-abre con doble clic y muestra, para cada uno de los 528 nombres de
-`carrera_trabajando`, **con qué otras carreras aparece declarado**.
+Genera `coocurrencia_programas.html`, un archivo autocontenido que se
+abre con doble clic y muestra, para cada **programa propio**, dos cosas:
 
-Se hizo para apoyar la homologación, pero lo que mide es co-ocurrencia
-y por eso se llama así. «Panel» ya nombra otra cosa en este proyecto —
-el panel longitudinal de duración de vacantes.
+  1. con qué OTROS programas lo piden en el mismo aviso;
+  2. qué nombres de `carrera_trabajando` se homologaron ahí.
 
-POR QUÉ SOLO ESO
-  La página llegó a mostrar además nivel académico, cargos, empleadores
-  y áreas. Se fueron todos: el cargo es texto libre del empleador y
-  necesita mucho trabajo antes de significar algo; el área es
-  trazabilidad de captura, no un atributo del aviso; y nivel y
-  empleador, aunque se leen bien, no ayudan a decidir a qué carrera
-  SIES corresponde un nombre. Una página con cinco gráficos invita a
-  mirar los cinco.
+LA UNIDAD CAMBIÓ, Y ESO CAMBIA LO QUE MIDE
+  La versión anterior tenía como unidad `carrera_trabajando`, el texto
+  que escribe trabajando.cl. Servía para decidir la homologación —a qué
+  familia pertenece un nombre— y ese trabajo ya está hecho.
 
-  Lo decisivo es la co-declaración: si un nombre aparece una y otra vez
-  junto a otros de la misma familia, el empleador está diciendo a cuál
-  pertenece. Eso es evidencia. El parecido de strings no lo es — la
-  columna `sugerencia` le propone "Ingeniería Civil Industrial" a
-  "Ingeniería Civil", que son carreras distintas.
+  Ahora la unidad es el programa formativo. `Ingeniería en Computación
+  e Informática` reúne los nombres que antes estaban dispersos en
+  `Ingeniería en Informática / Sistemas`, `Ingeniería en Gestión e
+  Informática` y otros, así que la co-ocurrencia deja de estar partida
+  por variantes de redacción y pasa a decir algo sobre **formaciones**.
+
+  El segundo ranking existe para no perder de vista de dónde sale cada
+  número: si un programa junta veinte nombres de aviso, conviene verlo.
+
+QUÉ QUEDA AFUERA, Y CUÁNTO ES
+  - **Los avisos genéricos.** Uno que declara 504 carreras volvería a
+    todos los programas co-ocurrentes de todos.
+  - **Los campos ISCED.** Cuando el aviso nombra `Ingeniería` o
+    `Diseño` no nombra un programa, y mezclarlos como si fueran una
+    unidad más pondría un campo al lado de una carrera. Es el 7,9% de
+    las menciones específicas; la cifra exacta la imprime el script.
+  - Los niveles sueltos (`MBA`), los cargos (`Paramédico`) y lo no
+    informativo: no nombran ninguna formación.
 
 LA BASE DE LOS PORCENTAJES
-  Los avisos específicos que declaran esa carrera. **La columna suma
-  más de 100%** y está bien: un aviso declara varias carreras y cuenta
-  en todas. En vez de explicarlo en abstracto, la página lee en
-  palabras la primera fila de cada ranking.
-
-  Los avisos genéricos quedan fuera de todos los conteos. Uno que
-  declara 504 carreras volvería a todas co-declaradas de todo.
-
-POR QUÉ UNA PÁGINA Y NO UNA CONSULTA
-  `mirar.py` contesta la pregunta de a un nombre por vez. Pero la
-  homologación es la MISMA pregunta 405 veces, así que conviene
-  calcularla toda de una y tenerla al lado de la planilla. Sin terminal,
-  sin entorno que levantar, sin internet, y sobrevive a apagar la
-  máquina.
-
-  La contra: es una foto. Cuando llegue la corrida de septiembre hay que
-  regenerarla. No es grave, porque la taxonomía saturó en 528 nombres.
+  Los avisos específicos que piden ese programa. **La columna suma más
+  de 100%** y está bien: un aviso pide varios programas y cuenta en
+  todos. La página lee en palabras la primera fila de cada ranking, en
+  vez de explicarlo en abstracto.
 
 Uso:
   ./coocurrencia.sh
   python coocurrencia.py --maestras <dir> --salida <archivo.html>
 """
-
 import argparse, csv, html, json, os, re, sys, unicodedata
 from collections import Counter, defaultdict
 
@@ -60,9 +53,9 @@ except Exception:
     UMBRAL = 30
 
 try:
-    from carreras_sies_2026 import CARRERAS_POR_AREA
+    from homologacion import Homologacion, clave
 except Exception:
-    CARRERAS_POR_AREA = {}
+    Homologacion, clave = None, lambda s: s
 
 TOPE_CO = 15
 
@@ -105,76 +98,80 @@ def leer(path, obligatorio=True):
 
 
 def construir(dir_maestras):
+    """Lee `aviso_programa.csv` — la tabla donde ya aterrizó la
+    homologación— y arma una ficha por programa.
+
+    No vuelve a resolver el join: eso lo hizo `consolidar.py`. Acá solo
+    se cuenta. Si el archivo no está, el mensaje dice qué correr.
+    """
     M = lambda n: os.path.join(dir_maestras, n)
-    ac = leer(M('aviso_carrera.csv'))
-    hom = {r['carrera_trabajando']: r
-           for r in leer(M('homologacion_carreras.csv'), obligatorio=False)
-           if r.get('nivel_condicion', '*') in ('*', '')}
+    if not os.path.exists(M('aviso_programa.csv')):
+        print("⛔  No existe aviso_programa.csv")
+        print("    Lo escribe consolidar.py cuando encuentra "
+              "maestras/homologacion.csv.")
+        print("    Corré  ./procesar.sh  y volvé a intentar.\n")
+        sys.exit(1)
+    ap = leer(M('aviso_programa.csv'))
 
-    # pares declarados de avisos específicos
-    decl = defaultdict(set)       # nombre -> ids
-    decl_tot = Counter()          # nombre -> avisos totales (con genéricos)
-    por_aviso = defaultdict(set)  # id -> nombres
-    for f in ac:
-        if f.get('fuente') != 'declarada':
-            continue
-        nombre = f.get('carrera_trabajando') or ''
-        if not nombre:
-            continue
-        decl_tot[nombre] += 1
+    prog_por_aviso = defaultdict(set)   # aviso -> {programa}
+    ids = defaultdict(set)             # programa -> {aviso}
+    origen = defaultdict(Counter)      # programa -> {nombre de aviso: avisos}
+    meta = {}                          # programa -> área e ISCED
+    n_campo = n_generico = 0
+
+    for f in ap:
         if entero(f.get('n_carreras_declaradas_aviso')) > UMBRAL:
+            n_generico += 1
             continue
-        decl[nombre].add(f['aviso_id'])
-        por_aviso[f['aviso_id']].add(nombre)
+        if f.get('tipo_entrada') != 'programa_propio':
+            n_campo += 1
+            continue
+        p, a = f['programa_propio'], f['aviso_id']
+        ids[p].add(a)
+        prog_por_aviso[a].add(p)
+        meta.setdefault(p, (f.get('area_sies') or '',
+                            f.get('isced_amplio_cod') or ''))
+        for nombre in (f.get('carreras_origen') or '').split(' | '):
+            if nombre.strip():
+                origen[p][nombre.strip()] += 1
 
-    # Ya no hace falta abrir avisos.csv: con la página reducida a la
-    # co-ocurrencia, todo sale de aviso_carrera. Son 28 MB menos por
-    # corrida.
-    sies = sorted({s for c in CARRERAS_POR_AREA.values() for s in c.values()})
-    sies_norm = {normalizar(s): s for s in sies}
+    # Los programas del catálogo que ningún aviso específico pide. No es
+    # lo mismo que "no existen": es que no aparecieron. Se listan aparte
+    # para que la ausencia se vea, en vez de faltar en silencio.
+    sin_avisos = []
+    if Homologacion:
+        hom = Homologacion.cargar(M('homologacion.csv'), obligatoria=False)
+        if hom:
+            todos = {r['programa_propio'] for r in hom.filas
+                     if r.get('programa_propio', '').strip()}
+            sin_avisos = sorted(todos - set(ids))
 
     fichas = []
-    for nombre, ids in decl.items():
+    for p, avisos in ids.items():
         co = Counter()
-        for i in ids:
-            for otro in por_aviso[i]:
-                if otro != nombre:
+        for a in avisos:
+            for otro in prog_por_aviso[a]:
+                if otro != p:
                     co[otro] += 1
-        h = hom.get(nombre, {})
+        area, isced = meta[p]
         fichas.append({
-            'nombre': nombre,
-            'esp': len(ids),
-            'tot': decl_tot[nombre],
-            'sies': h.get('carrera_sies', ''),
-            'area_sies': h.get('area_sies', ''),
-            'rel': h.get('tipo_relacion', ''),
-            'quien': h.get('revisado_por', ''),
-            'exacto': sies_norm.get(normalizar(nombre), ''),
+            'nombre': p,
+            'area': area,
+            'isced': isced,
+            'esp': len(avisos),
             'co': top(co, TOPE_CO),
+            'org': top(origen[p], TOPE_CO),
+            'n_org': len(origen[p]),
         })
 
-    # nombres que solo aparecen en avisos genéricos: no tienen evidencia
-    for nombre, n in decl_tot.items():
-        if nombre not in decl:
-            h = hom.get(nombre, {})
-            fichas.append({
-                'nombre': nombre, 'esp': 0, 'tot': n,
-                'sies': h.get('carrera_sies', ''),
-                'area_sies': h.get('area_sies', ''),
-                'rel': h.get('tipo_relacion', ''),
-                'quien': h.get('revisado_por', ''),
-                'exacto': sies_norm.get(normalizar(nombre), ''),
-                'co': [],
-            })
-
-    fichas.sort(key=lambda f: (bool(f['sies']), -f['esp'], f['nombre']))
-    return fichas, sies
+    fichas.sort(key=lambda f: (-f['esp'], f['nombre']))
+    return fichas, sin_avisos, n_campo, n_generico
 
 
 PAGINA = """<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Co-ocurrencia de carreras — Monitor Mercado Laboral</title>
+<title>Co-ocurrencia de programas — Monitor Mercado Laboral</title>
 <style>
 :root{--bg:#fbfaf8;--fg:#22201d;--tenue:#6b6560;--linea:#e5e0d8;
       --tarjeta:#fff;--acento:#7a4f2b;--ok:#2f6b46;--okbg:#e8f3ec;
@@ -197,6 +194,8 @@ input[type=search]{flex:1;min-width:220px;padding:8px 11px;font-size:14px;
 button{padding:7px 12px;font-size:13px;border:1px solid var(--linea);
  border-radius:7px;background:var(--tarjeta);color:var(--fg);cursor:pointer}
 button.on{background:var(--acento);color:var(--bg);border-color:var(--acento)}
+select{padding:8px 10px;font-size:13px;border:1px solid var(--linea);
+ border-radius:7px;background:var(--tarjeta);color:var(--fg)}
 main{max-width:920px;margin:0 auto;padding:16px 20px 60px}
 .ficha{background:var(--tarjeta);border:1px solid var(--linea);
  border-radius:10px;margin-bottom:9px;overflow:hidden}
@@ -235,14 +234,13 @@ details{margin-top:22px;border-top:1px solid var(--linea);padding-top:12px}
 summary{cursor:pointer;font-size:13px;color:var(--tenue)}
 </style></head><body>
 <header>
-  <h1>Co-ocurrencia de carreras</h1>
+  <h1>Co-ocurrencia de programas formativos</h1>
   <div class="meta">__META__</div>
   <div class="controles">
-    <input type="search" id="q" placeholder="Buscar nombre de carrera…"
+    <input type="search" id="q"
+           placeholder="Buscar programa, o un nombre de aviso homologado ahí…"
            autocomplete="off">
-    <button id="f-pend" class="on">Pendientes</button>
-    <button id="f-todo">Todas</button>
-    <button id="f-res">Resueltas</button>
+    <select id="area"><option value="">todas las áreas</option>__AREAS__</select>
     <span class="cnt" id="cuenta"></span>
   </div>
 </header>
@@ -250,8 +248,11 @@ summary{cursor:pointer;font-size:13px;color:var(--tenue)}
   <div id="lista"></div>
   <div class="vacio" id="vacio" style="display:none">Nada coincide.</div>
   <details>
-    <summary>Las __NSIES__ carreras SIES, para copiar el nombre exacto</summary>
-    <div class="sies">__SIES__</div>
+    <summary>__NSIN__ programas del catálogo que ningún aviso específico
+      pide</summary>
+    <p class="nota">No significa que no exista demanda: significa que en
+      esta corrida ningún aviso los nombró de forma específica.</p>
+    <div class="sies">__SIN__</div>
   </details>
 </main>
 <script>
@@ -272,46 +273,52 @@ function barras(pares, total){
 
 function cuerpo(f){
   let h = '';
-  if(f.exacto) h += `<p class="nota">Coincide exactamente con la carrera
-     SIES <code>${esc(f.exacto)}</code>.</p>`;
-  if(f.sies) h += `<p class="nota">Ya homologada a
-     <code>${esc(f.sies)}</code> · ${esc(f.area_sies)} ·
-     ${esc(f.rel)} ${f.quien ? '· ' + esc(f.quien) : ''}</p>`;
-  if(!f.esp){
-    h += `<p class="nota">Solo aparece en avisos genéricos, que declaran
-      medio catálogo. No hay evidencia para decidir.</p>`;
-    return h;
-  }
   if(f.co.length){
     const [k, v] = f.co[0];
-    h += `<p class="lectura">De los <b>${f.esp}</b> avisos que declaran
+    h += `<h3>Se pide junto con — otros programas</h3>`;
+    h += `<p class="lectura">De los <b>${f.esp}</b> avisos que piden
       <b>${esc(f.nombre)}</b>, <b>${v}</b> —el
-      ${(v*100/f.esp).toFixed(0)}%— declaran <b>además</b>
-      ${esc(k)}.</p>`;
+      ${(v*100/f.esp).toFixed(0)}%— piden <b>además</b> ${esc(k)}.</p>`;
+    h += barras(f.co, f.esp);
+  } else {
+    h += `<h3>Se pide junto con — otros programas</h3>`;
+    h += `<p class="nota">Ninguno: siempre se pide solo. Es señal fuerte
+      de que el empleador tiene una formación concreta en mente.</p>`;
   }
-  h += barras(f.co, f.esp);
 
+  h += `<h3>Nombres de aviso homologados acá — ${f.n_org}</h3>`;
+  if(f.org.length){
+    const [k2, v2] = f.org[0];
+    h += `<p class="lectura">De los <b>${f.esp}</b> avisos, <b>${v2}</b>
+      llegaron acá porque el empleador escribió <b>${esc(k2)}</b>.</p>`;
+    h += barras(f.org, f.esp);
+  }
+  if(f.n_org > f.org.length)
+    h += `<p class="nota">… y ${f.n_org - f.org.length} nombres más, con
+      menos avisos.</p>`;
   return h;
 }
 
-let filtro = 'pend';
 function pinta(){
   const q = norm(document.getElementById('q').value.trim());
+  const ar = document.getElementById('area').value;
+  // La búsqueda entra también por los nombres de aviso: el usuario
+  // suele acordarse de "Analista Programador", no del programa.
   const vis = D.filter(f => {
-    if(filtro==='pend' && f.sies) return false;
-    if(filtro==='res' && !f.sies) return false;
-    return !q || norm(f.nombre).includes(q);
+    if(ar && f.area !== ar) return false;
+    if(!q) return true;
+    return norm(f.nombre).includes(q) ||
+           f.org.some(([k]) => norm(k).includes(q));
   });
   document.getElementById('cuenta').textContent =
     vis.length + ' de ' + D.length;
   document.getElementById('vacio').style.display = vis.length ? 'none':'block';
-  document.getElementById('lista').innerHTML = vis.map((f,i) =>
+  document.getElementById('lista').innerHTML = vis.map(f =>
     `<div class="ficha" data-i="${D.indexOf(f)}">
        <div class="cab">
          <span class="n">${esc(f.nombre)}</span>
-         <span class="tag ${f.sies?'t-ok':'t-pend'}">${
-            f.sies ? 'homologada' : 'pendiente'}</span>
-         <span class="cnt">${f.esp} avisos</span>
+         <span class="tag t-ok">${esc(f.area)}</span>
+         <span class="cnt">${f.esp} avisos · ${f.n_org} nombres</span>
        </div>
        <div class="cuerpo"></div>
      </div>`).join('');
@@ -327,63 +334,48 @@ document.addEventListener('click', ev => {
   ficha.classList.toggle('abierta');
 });
 document.getElementById('q').addEventListener('input', pinta);
-for(const [id,v] of [['f-pend','pend'],['f-todo','todo'],['f-res','res']])
-  document.getElementById(id).addEventListener('click', e => {
-    filtro = v;
-    document.querySelectorAll('.controles button')
-            .forEach(b => b.classList.remove('on'));
-    e.target.classList.add('on');
-    pinta();
-  });
+document.getElementById('area').addEventListener('change', pinta);
 pinta();
 </script></body></html>
 """
 
 
 def main(dir_maestras, salida):
-    fichas, sies = construir(dir_maestras)
-    pend = [f for f in fichas if not f['sies']]
+    fichas, sin_avisos, n_campo, n_generico = construir(dir_maestras)
     tot_esp = sum(f['esp'] for f in fichas) or 1
+    areas = sorted({f['area'] for f in fichas if f['area']})
 
-    s_p = '' if len(pend) == 1 else 's'
-    s_h = '' if len(fichas) - len(pend) == 1 else 's'
-    meta = (f"{len(fichas)} nombres de carrera · "
-            f"{len(fichas) - len(pend)} homologada{s_h} · "
-            f"<b>{len(pend)} pendiente{s_p}</b> · "
+    meta = (f"{len(fichas)} programas · {tot_esp} pares aviso×programa · "
             f"genéricos excluidos (más de {UMBRAL} carreras declaradas) · "
+            f"campos ISCED excluidos ({n_campo} filas) · "
             f"generado desde {html.escape(os.path.abspath(dir_maestras))}")
 
     datos = json.dumps(fichas, ensure_ascii=False).replace('</', '<\\/')
     pagina = (PAGINA
               .replace('__META__', meta)
-              .replace('__NSIES__', str(len(sies)))
-              .replace('__SIES__',
-                       ''.join(f'<div>{html.escape(s)}</div>' for s in sies))
+              .replace('__AREAS__', ''.join(
+                  f'<option>{html.escape(a)}</option>' for a in areas))
+              .replace('__NSIN__', str(len(sin_avisos)))
+              .replace('__SIN__', ''.join(
+                  f'<div>{html.escape(p)}</div>' for p in sin_avisos))
               .replace('__DATOS__', datos))
 
     os.makedirs(os.path.dirname(os.path.abspath(salida)) or '.', exist_ok=True)
     with open(salida, 'w', encoding='utf-8') as f:
         f.write(pagina)
 
-    acum, hitos = 0, {}
-    for i, f in enumerate(sorted(pend, key=lambda x: -x['esp']), 1):
-        acum += f['esp']
-        if i in (25, 50, 100, 200):
-            hitos[i] = acum
-    ya = tot_esp - sum(f['esp'] for f in pend)
-
     print("=" * 64)
-    print("  CO-OCURRENCIA DE CARRERAS")
+    print("  CO-OCURRENCIA DE PROGRAMAS FORMATIVOS")
     print("=" * 64)
-    print(f"  nombres        : {len(fichas)}")
-    print(f"  homologadas    : {len(fichas) - len(pend)}")
-    print(f"  pendientes     : {len(pend)}")
-    print(f"  cobertura ya resuelta: {ya * 100 / tot_esp:.1f}% "
-          f"de las menciones específicas")
-    if hitos:
-        print(f"\n  si revisás las primeras N pendientes:")
-        for n, a in hitos.items():
-            print(f"    {n:>4} filas  →  {(ya + a) * 100 / tot_esp:5.1f}%")
+    print(f"  programas con avisos   : {len(fichas)}")
+    print(f"  sin ningún aviso       : {len(sin_avisos)}")
+    print(f"  pares aviso×programa   : {tot_esp}")
+    print(f"  filas de campo ISCED excluidas   : {n_campo}")
+    print(f"  filas de avisos genéricos excluidas: {n_generico}")
+    print(f"\n  los más pedidos:")
+    for f in fichas[:10]:
+        print(f"    {f['esp']:5d}  {f['nombre'][:44]:44s} "
+              f"({f['n_org']} nombres de aviso)")
     print(f"\n  Archivo: {os.path.abspath(salida)}")
     print(f"  Abrilo con doble clic. No necesita internet ni servidor.")
     print("=" * 64 + "\n")
@@ -392,6 +384,6 @@ def main(dir_maestras, salida):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument('--maestras', default='maestras')
-    ap.add_argument('--salida', default='coocurrencia_carreras.html')
+    ap.add_argument('--salida', default='coocurrencia_programas.html')
     a = ap.parse_args()
     main(a.maestras, a.salida)
