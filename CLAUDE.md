@@ -72,7 +72,7 @@ Lo que hay en el repo, y nada más:
 | `homologar.py` | genera la cola editable de homologación |
 | `homologacion.py` | el join carrera → programa: define la clave y resuelve los destinos |
 | `validar_homologacion.py` / `validar.sh` | revisa la homologación contra el catálogo propio y ISCED-F |
-| `programas_propios.csv` | catálogo propio: 205 programas, con genérica SIES, niveles e ISCED-F |
+| `programas_propios.csv` | catálogo propio: 204 programas, con genérica SIES, niveles e ISCED-F |
 | `isced_f_2013.csv` | ISCED-F 2013 (UNESCO): 138 códigos amplio/estrecho/detallado |
 | `mirar.py` / `mirar.sh` | qué hay detrás de un nombre de carrera; apoya la homologación |
 | `coocurrencia.py` / `coocurrencia.sh` | genera `coocurrencia_programas.html`: qué programa se pide junto con qué, y qué nombres de aviso lo alimentan |
@@ -1173,7 +1173,7 @@ la reemplaza, porque va desde el término buscado y no desde lo que el
 aviso declara.
 
 **Hecha, fuera del repo, en agosto 2026** — y no contra SIES. El autor
-construyó un **catálogo propio de 205 programas formativos**
+construyó un **catálogo propio de 204 programas formativos**
 (`programas_propios.csv`), cada uno respaldado por su genérica SIES
 cuando existe, por su distribución de niveles en la oferta 2026, y por
 sus tres códigos **ISCED-F 2013** (amplio, estrecho, detallado). Sobre
@@ -1197,12 +1197,25 @@ y no es una carrera — SIES no tiene «Ingeniería Civil» a secas y el
 aviso no dice cuál. Forzarla a un programa inventa 773 atribuciones.
 Como campo (ISCED 0788) es un dato honesto.
 
-**`no_homologable_carrera` significa** —decisión del autor, 18 agosto—
-que el programa destino es el correcto pero **no tiene genérica SIES que
-lo respalde**: `Teología`, `Oceanografía`, `Quiropraxia`, `Ingeniería
-Civil Hidráulica`. SIES los mete en un cajón (`Otros Profesionales
-de…`), y la marca guarda esa ausencia en vez de esconderla. No es «no se
-pudo homologar».
+**Que un programa no tenga genérica SIES que lo respalde** —`Teología`,
+`Oceanografía`, `Quiropraxia`, `Ingeniería Civil Hidráulica`— es un
+atributo **del programa**, no del vínculo con el nombre del aviso. Vive
+en `programas_propios.sin_generica_sies`, donde se escribe una vez, y no
+repetido en cada fila que apunte ahí. SIES los mete en un cajón (`Otros
+Profesionales de…`); la marca guarda esa ausencia en vez de esconderla.
+Son 9 de 204.
+
+**`tipo_relacion` quedó en cuatro valores** —vacío, `exacta`,
+`equivalente`, `multiple`— y describe solo el vínculo con un programa.
+`no_homologable_programa` se retiró: estaba determinada por
+`tipo_entrada` (eran exactamente las 105 filas sin programa) y no
+informaba nada.
+
+**`Ingeniería Civil` salió del catálogo propio.** No tenía genérica
+SIES, su ISCED era `0788` —interdisciplinario— y no recibía ninguna
+carrera: era un campo disfrazado de programa. Con eso desaparece
+también el único código ISCED inválido del catálogo, un `078` que no
+existe en ISCED-F 2013.
 
 **`validar_homologacion.py` revisa el archivo, no lo produce.** Separa
 tres cosas: ⛔ lo que rompe el join o el vocabulario, ⚠ lo que necesita

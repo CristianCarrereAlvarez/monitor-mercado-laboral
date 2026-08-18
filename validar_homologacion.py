@@ -51,13 +51,19 @@ REPO = os.path.dirname(os.path.abspath(__file__))
 VOCAB = {
     'tipo_entrada': {'programa_propio', 'campo_iscedf', 'nivel_formativo',
                      'solo_ocupacion', 'no_informativo'},
-    'tipo_relacion': {'exacta', 'equivalente', 'multiple',
-                      'no_homologable_programa', 'no_homologable_carrera'},
+    # Vacío es válido y es lo correcto para las filas sin programa: la
+    # relación describe el vínculo con un programa, y ahí no hay ninguno.
+    # `no_homologable_programa` se retiró porque estaba determinada por
+    # `tipo_entrada` —eran exactamente las 105 filas sin programa— y
+    # `no_homologable_carrera` porque era un atributo del programa, no de
+    # la relación: vive en `programas_propios.sin_generica_sies`.
+    'tipo_relacion': {'', 'exacta', 'equivalente', 'multiple'},
     'estado': {'validado', 'propuesto', 'pendiente', 'descartado'},
     'confianza': {'alta', 'media', 'baja'},
+    # `posgrado` se retiró: era un segundo nombre para
+    # `posgrado_postitulo`, que es el del catálogo.
     'nivel_formativo': {'', 'tecnico', 'profesional', 'profesional_con_grado',
-                        'licenciatura', 'posgrado', 'posgrado_postitulo',
-                        'sin_definir'},
+                        'licenciatura', 'posgrado_postitulo', 'sin_definir'},
 }
 
 # Qué destino admite cada tipo_entrada.
@@ -262,23 +268,9 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
         print(f"\n  ·  Sin maestra a mano: no se validó el join por nombre."
               f"\n     (--carreras <dir maestras>/carreras_trabajando.csv)")
 
-    # ── 7. no_homologable_carrera ──────────────────────────────────
-    # Definición acordada: el programa destino es el correcto, pero no
-    # tiene carrera genérica SIES que lo respalde. Si la tiene, el valor
-    # está mal puesto: es una equivalencia común.
-    for r in H:
-        if r['tipo_relacion'] != 'no_homologable_carrera':
-            continue
-        p = prog.get(r['programa_propio'].strip())
-        if not p:
-            continue
-        g = p['generica_sies'].strip()
-        if g and not RESIDUAL.match(g):
-            inf.rev('`no_homologable_carrera` cuyo destino SÍ tiene '
-                    'genérica SIES',
-                    f"{r['carrera_trabajando'][:38]:38s} → "
-                    f"{r['programa_propio'][:30]:30s} "
-                    f"(genérica: {g})", n(r))
+    # (El chequeo de `no_homologable_carrera` se retiró: el valor dejó
+    # de existir. Que un programa no tenga genérica SIES es un atributo
+    # del programa y vive en `programas_propios.sin_generica_sies`.)
 
     # ── 8. desajuste de nivel ──────────────────────────────────────
     # El nombre del aviso suele declarar el nivel; el programa destino
@@ -314,6 +306,76 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
                          f"{r['programa_propio'][:32]:32s} "
                          f"[{'|'.join(sorted(niveles))}] "
                          f"{r['estado']}/{r['confianza']}", n(r))
+
+
+    # ── 9. la relación describe el vínculo con un programa ─────────
+    for r in H:
+        tiene = bool(r['programa_propio'].strip())
+        rel = r['tipo_relacion'].strip()
+        if tiene and not rel:
+            inf.error('fila con programa y sin `tipo_relacion`',
+                      f"{r['carrera_trabajando'][:44]}", n(r))
+        if not tiene and rel:
+            inf.error('`tipo_relacion` en una fila sin programa',
+                      f"{r['carrera_trabajando'][:44]:44s} = {rel}", n(r))
+
+    # ── 10. `exacta` es una propiedad de los nombres, no una opinión ─
+    for r in H:
+        if not r['programa_propio'].strip():
+            continue
+        fuerte = lambda x: re.sub(r'\s+', ' ',
+                                  re.sub(r'[^a-z0-9 ]', ' ', nz(x))).strip()
+        igual = fuerte(r['carrera_trabajando']) == fuerte(r['programa_propio'])
+        if igual and r['tipo_relacion'] != 'exacta':
+            inf.rev('el nombre ES el del programa, pero no dice `exacta`',
+                    f"{r['carrera_trabajando'][:40]:40s} "
+                    f"({r['tipo_relacion']})", n(r))
+        if not igual and r['tipo_relacion'] == 'exacta':
+            inf.error('`exacta` con nombres que no coinciden',
+                      f"{r['carrera_trabajando'][:36]:36s} ≠ "
+                      f"{r['programa_propio'][:36]}", n(r))
+
+    # ── 11. el nombre no dice el nivel, el catálogo tiene los dos ───
+    # La clase que más rinde: elegir un nivel que el aviso no declaró.
+    # Se compara el NÚCLEO del programa —su nombre sin el prefijo de
+    # nivel— contra el resto del catálogo.
+    PREFIJO = re.compile(r'^(tecnologo |t[eé]cnico en |t[eé]cnico |ingenier[ií]a civil '
+                         r'en |ingenier[ií]a civil |ingenier[ií]a en |'
+                         r'ingenier[ií]a |pedagog[ií]a en |licenciatura en )')
+    nucleo = lambda p: PREFIJO.sub('', nz(p))
+    por_nucleo = defaultdict(list)
+    for p in prog:
+        por_nucleo[nucleo(p)].append(p)
+    for k, v in por_carrera.items():
+        if len(v) > 1:
+            continue          # ya está resuelto con `multiple`
+        r = v[0]
+        d = r['programa_propio'].strip()
+        if not d or PREFIJO.match(nz(r['carrera_trabajando'])):
+            continue          # el nombre YA declara un nivel
+        if not PREFIJO.match(nz(d)):
+            continue          # el destino no agrega ninguno
+        # «Civil» no cuenta como alternativa: son 5-6 años con grado y
+        # ningún nombre sin la palabra los está nombrando.
+        otros = [p for p in por_nucleo[nucleo(d)] if p != d
+                 and not p.startswith('Ingeniería Civil')]
+        if otros and not d.startswith('Ingeniería Civil'):
+            inf.rev('el nombre no declara nivel y el catálogo tiene otro',
+                    f"{r['carrera_trabajando'][:34]:34s} → {d[:32]:32s} "
+                    f"(también: {otros[0][:30]})", n(r))
+
+    # ── 12. destino «Ingeniería Civil …» sin que el nombre lo diga ──
+    for r in H:
+        d = r['programa_propio'].strip()
+        if d.startswith('Ingeniería Civil') and \
+                'civil' not in nz(r['carrera_trabajando']):
+            alt = [p for p in por_nucleo[nucleo(d)]
+                   if not p.startswith('Ingeniería Civil')]
+            inf.rev('destino «Ingeniería Civil» sin que el aviso diga '
+                    '«civil»',
+                    f"{r['carrera_trabajando'][:36]:36s} → {d[:34]:34s}"
+                    + (f" (existe {alt[0][:28]})" if alt else
+                       " — no hay alternativa en el catálogo"), n(r))
 
     # ── salida ─────────────────────────────────────────────────────
     cob = []
