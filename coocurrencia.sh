@@ -5,7 +5,8 @@
 #   ./coocurrencia.sh          # genera y abre
 #   ./coocurrencia.sh --no-abrir
 #
-# El HTML queda en <datos>/coocurrencia_programas.html — en Drive, así que
+# El HTML queda en <datos>/visualizaciones/coocurrencia_programas.html
+# — en Drive, así que
 # sobrevive a apagar la máquina y se sincroniza solo.
 
 set -uo pipefail
@@ -16,7 +17,9 @@ ABRIR=1
 [ "${1:-}" = "--no-abrir" ] && ABRIR=0
 
 DATOS="$("$REPO/capturar.sh" --donde)" || exit 1
-SALIDA="$DATOS/coocurrencia_programas.html"
+VIZ="$DATOS/visualizaciones"
+mkdir -p "$VIZ"
+SALIDA="$VIZ/coocurrencia_programas.html"
 
 PYTHONPATH="$REPO" python3 -u "$REPO/coocurrencia.py" \
     --maestras "$DATOS/maestras" --salida "$SALIDA" || exit $?

@@ -78,6 +78,7 @@ Lo que hay en el repo, y nada más:
 | `coocurrencia.py` / `coocurrencia.sh` | genera `coocurrencia_programas.html`: qué programa se pide junto con qué, y qué nombres de aviso lo alimentan |
 | `diccionario.py` | genera `DICCIONARIO.md` desde los datos reales |
 | `variables.py` / `variables.sh` | genera `variables_maestras.html`: las mismas glosas, para consultar mientras se trabaja |
+| `arquitectura.py` / `arquitectura.sh` | genera `arquitectura.html`: el mapa de archivos del proyecto y sus conexiones |
 | `glosario.py` | las glosas de las columnas, escritas a mano |
 | `DICCIONARIO.md` | generado; **no editar a mano** |
 | `carreras_sies_2026.py` | vigente — catálogo + índices; lo usan v9 y consolidar |
@@ -118,7 +119,7 @@ falsa, no.
 ./variables.sh
 ```
 
-Deja `<datos>/variables_maestras.html` en Drive: las 115 columnas de las
+Deja `<datos>/visualizaciones/variables_maestras.html`: las 115 columnas de las
 nueve maestras, con buscador sobre el nombre y sobre el texto de la
 definición, y una banda al margen en las 34 columnas cuya glosa existe
 sobre todo para evitar una mala lectura (`n_corridas_visto` no cuenta
@@ -141,6 +142,24 @@ Borrados del repo (agosto 2026), por si aparecen mencionados en notas
 viejas: `scraper_v7.py`, `scraper_v8.py`, `sonda_detalle.py`,
 `sonda_confidencial.py`. **No se conservaron.** Los hallazgos que
 produjeron están en §5; el código no volvió a hacer falta.
+
+### Dónde queda cada salida
+
+**Las páginas HTML van todas a `<datos>/visualizaciones/`**, junto a los
+datos y no en el repo: son producto de una corrida, no código. Los tres
+envoltorios —`variables.sh`, `coocurrencia.sh`, `arquitectura.sh`— crean
+la carpeta si no está y escriben ahí. `.gitignore` las excluye por si
+alguna cae en el repo al correr un script sin `--salida`.
+
+`DICCIONARIO.md` es la excepción y **sí se commitea**: cambia cuando
+cambia el código, no cuando llegan datos, y sirve de control en el diff.
+
+**El mapa de archivos se declara, no se dibuja.** `arquitectura.py` tiene
+una lista de bandas y una de flechas; el layout se calcula. La versión
+anterior era SVG a mano con coordenadas absolutas: cubría solo la captura
+y sumarle un archivo obligaba a recalcular decenas de números. Ahora es
+una línea. (Se puede borrar el viejo
+`Flujo captura v9 - Monitor Mercado Laboral.html`.)
 
 ---
 
@@ -178,6 +197,7 @@ cd ~/monitor-mercado-laboral && git pull --no-edit
 ./mirar.sh --buscar metal                  # qué nombres contienen "metal"
 ./coocurrencia.sh                          # el dashboard HTML de co-ocurrencia
 ./variables.sh                             # la referencia HTML de variables
+./arquitectura.sh                          # el mapa de archivos del proyecto
 ./validar.sh                               # revisa la homologación
 ```
 
@@ -1341,7 +1361,7 @@ similitud de strings no lo es. Excluye los genéricos, que si no harían
 aparecer las 504 como co-declaradas.
 
 **`coocurrencia.sh` es la misma evidencia, precalculada y agregada.**
-Escribe `<datos>/coocurrencia_programas.html`, un archivo autocontenido
+Escribe `<datos>/visualizaciones/coocurrencia_programas.html`, un archivo autocontenido
 que se abre con doble clic: sin terminal, sin servidor, sin internet, y
 queda en Drive.
 
