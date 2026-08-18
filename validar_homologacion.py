@@ -22,10 +22,15 @@ POR QUÉ EXISTE
   violan en silencio: una fila con `tipo_entrada = campo_iscedf` y un
   programa lleno se ve bien y no lo está.
 
-  Y hay un error que no se ve nunca: el nombre de la carrera es la
-  clave del join, y once de los 528 traen espacios de más. Si el
-  archivo y la maestra difieren en un espacio, esa carrera desaparece
-  del análisis sin que nada avise. Es la lección 10 del proyecto.
+  El otro riesgo es el nombre mismo: es la clave del join y once de los
+  528 traen espacios de más. Un cruce por igualdad exacta perdía esas
+  carreras **sin avisar** (lección 10). Ya no: el join pasa por
+  `homologacion.clave()`, que colapsa espacios, así que una diferencia
+  de espaciado es cosmética. El script la reporta igual —dos archivos
+  que deberían decir lo mismo no lo dicen— pero como ⚠, no como ⛔.
+
+  Lo que sí es error es un nombre declarado en los avisos que no tenga
+  fila de homologación: esas menciones se pierden de verdad.
 
 Uso:
   ./validar.sh
@@ -34,6 +39,8 @@ Uso:
 
 import argparse, csv, os, re, sys, unicodedata
 from collections import Counter, defaultdict
+
+from homologacion import Homologacion, clave
 
 csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
 
@@ -119,7 +126,7 @@ class Informe:
                 print(f"      {t}")
 
 
-def main(f_hom, f_prog, f_isced, f_carr, tope, adoptar_nombres):
+def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
     H = leer(f_hom, 'la homologación')
     P = leer(f_prog, 'el catálogo de programas propios')
     I = leer(f_isced, 'la tabla ISCED-F')
@@ -219,21 +226,25 @@ def main(f_hom, f_prog, f_isced, f_carr, tope, adoptar_nombres):
         homs = set(por_carrera)
         idx_m = defaultdict(list)
         for x in maes:
-            idx_m[nz(x)].append(x)
+            idx_m[clave(x)].append(x)
         for x in sorted(homs - maes):
-            iguales = [y for y in idx_m.get(nz(x), []) if y != x]
+            iguales = [y for y in idx_m.get(clave(x), []) if y != x]
             if iguales:
+                # El join normaliza espacios (ver homologacion.clave), así
+                # que esto YA NO rompe nada. Se avisa igual: dos archivos
+                # que deberían decir lo mismo no lo dicen, y la próxima
+                # diferencia podría no ser un espacio.
                 adoptar[x] = iguales[0]
-                inf.error('el nombre solo calza al normalizar espacios '
-                          '(el join exacto lo pierde)',
-                          f"homologación {x!r}  ≠  maestra {iguales[0]!r}",
-                          n(por_carrera[x][0]))
+                inf.rev('el nombre difiere en espacios (cosmético: el join '
+                        'los cruza igual)',
+                        f"homologación {x!r}  ≠  maestra {iguales[0]!r}",
+                        n(por_carrera[x][0]))
             else:
                 inf.error('carrera en la homologación que no está en la '
                           'maestra', repr(x), n(por_carrera[x][0]))
-        idx_h = {nz(x) for x in homs}
+        idx_h = {clave(x) for x in homs}
         for x in sorted(maes - homs):
-            if nz(x) not in idx_h:
+            if clave(x) not in idx_h:
                 inf.rev('carrera de la maestra sin fila de homologación',
                         repr(x))
     else:
@@ -294,6 +305,44 @@ def main(f_hom, f_prog, f_isced, f_carr, tope, adoptar_nombres):
                          f"{r['estado']}/{r['confianza']}", n(r))
 
     # ── salida ─────────────────────────────────────────────────────
+    cob = []
+    # ── cobertura real del join ────────────────────────────────────
+    # Los conteos de arriba salen de n_avisos_especificos, que es una
+    # columna del propio archivo. Esto cruza de verdad contra
+    # aviso_carrera.csv: es la prueba de que el join funciona.
+    if f_ac and os.path.exists(f_ac):
+        hom = Homologacion(H)
+        try:
+            from consolidar import UMBRAL_AVISO_GENERICO as UMBRAL
+        except Exception:
+            UMBRAL = 30
+        nombres = []
+        with open(f_ac, encoding='utf-8-sig', newline='') as f:
+            for r in csv.DictReader(f):
+                if (r.get('fuente') == 'declarada'
+                        and entero(r.get('n_carreras_declaradas_aviso'))
+                        <= UMBRAL):
+                    nombres.append(r['carrera_trabajando'])
+        res, sin_prog, huer = hom.cobertura(nombres)
+        t = len(nombres) or 1
+        perdidas = sum(huer.values())
+        cob.append(f"\n  cobertura del join contra aviso_carrera.csv"
+              f"  ({len(nombres)} menciones específicas declaradas)")
+        cob.append(f"    llegan a un programa propio   {res:6d}  "
+              f"{res * 100 / t:5.1f}%")
+        cob.append(f"    homologadas sin programa      {sin_prog:6d}  "
+              f"{sin_prog * 100 / t:5.1f}%   "
+              f"(campo, nivel, cargo o nada: no es una falla)")
+        cob.append(f"    sin fila de homologación      {perdidas:6d}  "
+              f"{perdidas * 100 / t:5.1f}%")
+        for nombre, c in sorted(huer.items(), key=lambda kv: -kv[1])[:10]:
+            inf.error('nombre declarado en los avisos que no está en la '
+                      'homologación', f"{nombre}  ({c} menciones)", c)
+    else:
+        cob.append(f"\n  ·  Sin aviso_carrera.csv: no se midió la cobertura real "
+              f"del join.")
+
+
     # La maestra manda: es lo que consolidar.py escribe desde el crudo.
     # Solo se reescriben nombres que ya calzaban al normalizar, así que
     # ninguna fila cambia de destino.
@@ -307,7 +356,7 @@ def main(f_hom, f_prog, f_isced, f_carr, tope, adoptar_nombres):
             w.writerows(H)
         print(f"\n  ✓  {len(adoptar)} nombres reescritos con la grafía de "
               f"la maestra, en {f_hom}")
-        inf.errores = [e for e in inf.errores
+        inf.revisar = [e for e in inf.revisar
                        if 'espacios' not in e[0]]
 
     inf.volcar('ERRORES — rompen el join o el vocabulario',
@@ -317,6 +366,8 @@ def main(f_hom, f_prog, f_isced, f_carr, tope, adoptar_nombres):
 
     # ── informe ────────────────────────────────────────────────────
     print(f"\n{'─' * 68}\n  INFORME\n{'─' * 68}")
+    for linea in cob:
+        print(linea)
 
     def bloque(titulo, clave, orden):
         print(f"\n  {titulo}")
@@ -373,11 +424,13 @@ if __name__ == "__main__":
     ap.add_argument('--isced', default=os.path.join(REPO, 'isced_f_2013.csv'))
     ap.add_argument('--carreras', default='maestras/carreras_trabajando.csv',
                     help='la maestra, para validar el join por nombre')
+    ap.add_argument('--aviso-carrera', default='maestras/aviso_carrera.csv',
+                    help='para medir la cobertura real del join')
     ap.add_argument('--adoptar-nombres-maestra', action='store_true',
                     help='reescribe en la homologación los nombres que solo '
                          'difieren en espacios, con la grafía de la maestra')
     ap.add_argument('--tope', type=int, default=25,
                     help='cuántas carreras de la cola listar (default 25)')
     a = ap.parse_args()
-    sys.exit(main(a.homologacion, a.programas, a.isced, a.carreras, a.tope,
-                  a.adoptar_nombres_maestra))
+    sys.exit(main(a.homologacion, a.programas, a.isced, a.carreras,
+                  a.aviso_carrera, a.tope, a.adoptar_nombres_maestra))

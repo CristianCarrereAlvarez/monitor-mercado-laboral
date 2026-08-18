@@ -18,4 +18,5 @@ DATOS="$("$REPO/capturar.sh" --donde)" || exit 1
 
 exec env PYTHONPATH="$REPO" python3 -u "$REPO/validar_homologacion.py" \
     --homologacion "$DATOS/maestras/homologacion.csv" \
-    --carreras "$DATOS/maestras/carreras_trabajando.csv" "$@"
+    --carreras "$DATOS/maestras/carreras_trabajando.csv" \
+    --aviso-carrera "$DATOS/maestras/aviso_carrera.csv" "$@"

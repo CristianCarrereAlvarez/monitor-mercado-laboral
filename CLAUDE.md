@@ -70,6 +70,7 @@ Lo que hay en el repo, y nada más:
 | `consolidar.py` | vigente — derivación |
 | `control.py` | chequeos de calidad + panel; lo corre `mensual.sh` solo |
 | `homologar.py` | genera la cola editable de homologación |
+| `homologacion.py` | el join carrera → programa: define la clave y resuelve los destinos |
 | `validar_homologacion.py` / `validar.sh` | revisa la homologación contra el catálogo propio y ISCED-F |
 | `programas_propios.csv` | catálogo propio: 205 programas, con genérica SIES, niveles e ISCED-F |
 | `isced_f_2013.csv` | ISCED-F 2013 (UNESCO): 138 códigos amplio/estrecho/detallado |
@@ -958,6 +959,52 @@ mapear y el número deja de ser 0.
 subconjunto estricto, 151 ⊂ 342 en Derecho). Se dejaron por
 compatibilidad; conviene retirarlas en una limpieza posterior.
 
+### El join carrera_trabajando → programa propio
+
+La clave del cruce es el **nombre de la carrera**, texto que escribe
+trabajando.cl. Tres de los 528 traen espacios dobles y once traen
+espacio final. Cualquier cruce por igualdad exacta funciona hasta que
+una de las dos puntas gana o pierde un espacio —al abrir el CSV en una
+planilla, al copiarlo entre máquinas— y ahí esas carreras
+**desaparecen del análisis sin que nada avise**.
+
+Por eso el cruce vive en un módulo, `homologacion.py`, y no se
+reescribe en cada script:
+
+```python
+from homologacion import Homologacion
+H = Homologacion.cargar('maestras/homologacion.csv')
+H.destinos('Música  ')     # cruza igual que 'Música' o 'Música '
+H.programas('Ingeniería')  # []  — es un campo, no tiene programa
+```
+
+**`clave()` normaliza solo espacios**, y eso está medido:
+
+```
+solo espacios            528 nombres → 528 claves, 0 colisiones
++ minúsculas + tildes    528 nombres → 527 claves, 1 colisión
+```
+
+La colisión es `Ingeniería Civil en Minas` / `Ingeniería civil en
+minas`, que son **dos filas** de la homologación. Plegarlas rompería la
+clave. Normalizar de menos deja pasar un error posible; normalizar de
+más crea uno seguro.
+
+**`destinos()` devuelve una lista, no un valor.** Nueve carreras abren a
+varios programas (`tipo_relacion = multiple`). Devolver el primero y
+callar los otros inventaría una atribución única donde el autor decidió
+que hay varias.
+
+**`programas()` puede venir vacío y eso no es una falla.** Cuando el
+aviso nombra un campo, un nivel, un cargo o nada, no hay programa —
+7,1% de las menciones específicas. Forzarlas a uno es exactamente el
+error que la homologación existe para evitar.
+
+`validar.sh` mide la cobertura real cruzando contra `aviso_carrera.csv`:
+92,9% llega a un programa, 7,1% está homologado sin programa, y lo que
+quede sin fila de homologación sale como ⛔ — esas menciones sí se
+pierden.
+
 ### Filtros de genericidad
 
 - `carreras_trabajando.n_avisos_especificos` — cuenta solo avisos con
@@ -1123,11 +1170,22 @@ ojo humano, y el informe de dónde está parado el trabajo.
 Los chequeos que ya encontraron algo real:
 
 - **Espacios en el nombre.** El nombre es la clave del join y **once de
-  los 528 traen espacios de más** (`'Música '`, `'Servicios  Posventa
-  Área Automotriz'`). Tres diferían en un espacio entre la homologación
-  y la maestra: 33 menciones que un join exacto pierde **sin avisar**.
-  Lección 10. La maestra manda —es lo que `consolidar.py` escribe desde
-  el crudo—, y `--adoptar-nombres-maestra` reescribe solo esos nombres.
+  los 528 traen espacios de más** (`'Música  '`, `'Servicios  Posventa
+  Área Automotriz'`). `consolidar.py` copia `nombreCarrera` tal cual, sin
+  tocar nada, así que esos espacios entran a la maestra y vuelven en cada
+  corrida. Un cruce por igualdad exacta perdía esas carreras **sin
+  avisar**: lección 10.
+
+  **La solución no es corregir los archivos, es que el cruce no dependa
+  del espacio** (§6, *El join*). Hoy es cosmético y el validador lo marca
+  ⚠, no ⛔; `--adoptar-nombres-maestra` los empareja igual, por prolijidad.
+
+  Vale la advertencia sobre esta misma sección: la primera medición decía
+  que tres nombres diferían entre la homologación y la maestra. **Era mi
+  copia de la maestra la que estaba mal** —había colapsado las corridas
+  de espacios al viajar—, no el dato. Se detecta porque el encabezado
+  decía `areas_observadas␣␣` y `consolidar.py` escribe `areas_observadas`.
+  Una copia de un archivo no es el archivo.
 - **Desajuste de nivel.** El nombre del aviso suele declarar el nivel
   («Técnico en…», «Ingeniería de Ejecución en…») y el programa destino
   declara en qué niveles se imparte. Cuando se contradicen, uno de los
