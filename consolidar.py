@@ -9,20 +9,20 @@ crudo sin tocar la red.
 Tablas (directorio maestras/):
 
   avisos.csv               1 fila por aviso_id — panel longitudinal
-  aviso_carrera.csv        1 fila por (aviso × carrera declarada)
+  aviso_entrada.csv        1 fila por (aviso × carrera declarada)
   aviso_termino.csv        1 fila por (aviso × término de búsqueda)
   aviso_habilidad.csv      1 fila por (aviso × habilidad)
   aviso_institucion.csv    1 fila por (aviso × institución)
   aviso_programa.csv       1 fila por (aviso × programa o campo ISCED)
   empresas.csv             1 fila por empresa_id  ← columnas manuales
-  carreras_trabajando.csv  1 fila por nombre      ← columnas manuales
+  entradas_trabajando.csv  1 fila por nombre      ← columnas manuales
   instituciones.csv        1 fila por id_institucion
 
 COLUMNAS MANUALES
   Las columnas que el script no gestiona se PRESERVAN en el upsert.
   Si agregás `rubro` o `tamano` a empresas.csv a mano, sobreviven a las
   corridas siguientes. Lo mismo con la homologación en
-  carreras_trabajando.csv. Las columnas gestionadas se sobrescriben.
+  entradas_trabajando.csv. Las columnas gestionadas se sobrescriben.
 
 HOMOLOGACIÓN
   No se decide acá: se APLICA. `maestras/homologacion.csv` es trabajo
@@ -311,7 +311,7 @@ COLS_AVISOS = [
     'exp_operador', 'exp_anios', 'exp_inconsistente',
     'nivel_academico', 'situacion_academica',
     # conteos
-    'n_carreras_declaradas', 'hash_carreras', 'n_avisos_mismo_conjunto',
+    'n_entradas_declaradas', 'hash_entradas', 'n_avisos_mismo_conjunto',
     'n_habilidades', 'n_instituciones',
     'postulaciones', 'visualizaciones',
     # flags
@@ -332,22 +332,22 @@ COLS_AVISO_TERMINO = [
 # Las tablas de pares también declaran su esquema acá y no en la llamada
 # a escribir_csv_simple: diccionario.py los importa para saber qué
 # columna viene del código y cuál se agregó a mano.
-COLS_AVISO_CARRERA = [
-    'aviso_id', 'carrera_trabajando', 'termino_busqueda', 'fuente',
-    'n_carreras_declaradas_aviso',
+COLS_AVISO_ENTRADA = [
+    'aviso_id', 'entrada_trabajando', 'termino_busqueda', 'fuente',
+    'n_entradas_declaradas_aviso',
 ]
 
 COLS_AVISO_HABILIDAD = ['aviso_id', 'habilidad', 'nivel']
 
 COLS_AVISO_INSTITUCION = [
-    'aviso_id', 'id_institucion', 'n_carreras_declaradas_aviso',
+    'aviso_id', 'id_institucion', 'n_entradas_declaradas_aviso',
 ]
 
 COLS_AVISO_PROGRAMA = [
     'aviso_id', 'tipo_entrada', 'programa_propio', 'area_sies',
     'isced_amplio_cod', 'isced_estrecho_cod', 'isced_detallado_cod',
-    'n_carreras_origen', 'carreras_origen', 'atribucion_multiple',
-    'n_carreras_declaradas_aviso',
+    'n_entradas_origen', 'entradas_origen', 'atribucion_multiple',
+    'n_entradas_declaradas_aviso',
 ]
 
 COLS_EMPRESAS = [
@@ -356,8 +356,8 @@ COLS_EMPRESAS = [
     'areas_observadas', 'siempre_confidencial', 'n_avisos_confidenciales',
 ]
 
-COLS_CARRERAS = [
-    'carrera_trabajando', 'n_avisos_acum', 'n_avisos_especificos',
+COLS_ENTRADAS = [
+    'entrada_trabajando', 'n_avisos_acum', 'n_avisos_especificos',
     'primera_vez_visto', 'ultima_vez_visto', 'areas_observadas',
 ]
 
@@ -366,7 +366,7 @@ COLS_CARRERAS = [
 # `n_avisos_especificos` cuenta solo los avisos por debajo del umbral,
 # y es el orden correcto para priorizar la homologación manual.
 #
-# El catálogo observado en carreras_trabajando.csv llevaba 506 nombres
+# El catálogo observado en entradas_trabajando.csv llevaba 506 nombres
 # distintos con dos áreas scrapeadas (agosto 2026); crece con cada área
 # nueva. Hay avisos que tildan una fracción enorme de ese catálogo.
 #
@@ -462,7 +462,7 @@ def aplanar(reg):
         'nivel_academico': detalle.get('nombreNivelAcademico'),
         'situacion_academica': detalle.get('nombreSituacionAcademica'),
 
-        'n_carreras_declaradas': len(detalle.get('carreras') or []),
+        'n_entradas_declaradas': len(detalle.get('carreras') or []),
         'n_habilidades': len(detalle.get('habilidades') or []),
         'n_instituciones': len(detalle.get('instituciones') or []),
         'postulaciones': detalle.get('candidadPostulaciones'),
@@ -497,14 +497,14 @@ def derivar_aviso_programa(pares_car, ruta_hom, ruta_prog, ruta_isced):
 
     GRANO. Una fila por (aviso, destino). Si dos carreras declaradas del
     mismo aviso caen en el mismo programa, es UNA fila —el aviso pide un
-    programa, no dos— y `n_carreras_origen` guarda que fueron dos.
+    programa, no dos— y `n_entradas_origen` guarda que fueron dos.
 
     QUÉ ENTRA. Solo `fuente == 'declarada'`: las filas `keyword_only`
     son trazabilidad del término buscado, no atribución de carrera
     (§5.6). Y solo los destinos que existen: `nivel_formativo`,
     `solo_ocupacion` y `no_informativo` **no producen fila**, porque el
     aviso no nombró ninguna formación. Son el 1,4% de las menciones y
-    perderlas acá es correcto; siguen en `aviso_carrera.csv`.
+    perderlas acá es correcto; siguen en `aviso_entrada.csv`.
 
     POR QUÉ INCLUYE LOS CAMPOS ISCED Y NO SOLO LOS PROGRAMAS. Dejar
     afuera `campo_iscedf` haría que un conteo por campo —el uso natural
@@ -538,7 +538,7 @@ def derivar_aviso_programa(pares_car, ruta_hom, ruta_prog, ruta_isced):
     for par in pares_car.values():
         if par.get('fuente') != 'declarada':
             continue
-        nombre = par['carrera_trabajando']
+        nombre = par['entrada_trabajando']
         destinos = hom.destinos(nombre)
         for d in destinos:
             programa = (d.get('programa_propio') or '').strip()
@@ -565,19 +565,19 @@ def derivar_aviso_programa(pares_car, ruta_hom, ruta_prog, ruta_isced):
                 'isced_amplio_cod': amplio or None,
                 'isced_estrecho_cod': estrecho or None,
                 'isced_detallado_cod': detallado or None,
-                'n_carreras_origen': 0,
+                'n_entradas_origen': 0,
                 '_origen': set(),
                 'atribucion_multiple': False,
-                'n_carreras_declaradas_aviso':
-                    par.get('n_carreras_declaradas_aviso'),
+                'n_entradas_declaradas_aviso':
+                    par.get('n_entradas_declaradas_aviso'),
             })
             f['_origen'].add(nombre)
             f['atribucion_multiple'] |= len(destinos) > 1
 
     for f in filas.values():
         origen = sorted(f.pop('_origen'))
-        f['n_carreras_origen'] = len(origen)
-        f['carreras_origen'] = ' | '.join(origen)
+        f['n_entradas_origen'] = len(origen)
+        f['entradas_origen'] = ' | '.join(origen)
     return list(filas.values()), None
 
 
@@ -689,7 +689,7 @@ def main(dir_crudo, dir_maestras):
         # carreras no comparten un conjunto, no tienen ninguno. Meterlos
         # todos bajo el mismo hash inventaría el grupo más grande de la
         # tabla.
-        p['hash_carreras'] = (
+        p['hash_entradas'] = (
             __import__('hashlib').sha1(
                 '|'.join(sorted(normalizar(c) for c in p['_carreras']))
                 .encode('utf-8')).hexdigest()[:16]
@@ -703,11 +703,11 @@ def main(dir_crudo, dir_maestras):
         # ── tablas puente (clave compuesta: sobrescribe, no duplica) ──
         for nombre in p['_carreras']:
             pares_car[(idf, nombre)] = {
-                'aviso_id': idf, 'carrera_trabajando': nombre,
+                'aviso_id': idf, 'entrada_trabajando': nombre,
                 'termino_busqueda': None, 'fuente': 'declarada',
-                'n_carreras_declaradas_aviso': p['n_carreras_declaradas']}
+                'n_entradas_declaradas_aviso': p['n_entradas_declaradas']}
             m = car_meta.setdefault(nombre, {
-                'carrera_trabajando': nombre, 'n_avisos_acum': 0,
+                'entrada_trabajando': nombre, 'n_avisos_acum': 0,
                 'primera_vez_visto': None,
                 'ultima_vez_visto': None, '_areas': set()})
             m['primera_vez_visto'] = minimo(m['primera_vez_visto'], fecha)
@@ -717,16 +717,16 @@ def main(dir_crudo, dir_maestras):
         if not p['_carreras'] and p['detalle_ok']:
             for t in p['_terminos']:
                 pares_car[(idf, f"[kw] {t}")] = {
-                    'aviso_id': idf, 'carrera_trabajando': None,
+                    'aviso_id': idf, 'entrada_trabajando': None,
                     'termino_busqueda': t, 'fuente': 'keyword_only',
-                    'n_carreras_declaradas_aviso': 0}
+                    'n_entradas_declaradas_aviso': 0}
 
         # Ruta A completa: un par por (aviso × término), declare o no
         # carreras el aviso. Es la tabla puente hacia SIES que no
         # requiere trabajo manual.
         #
         # NOTA: esta tabla supersede las filas fuente='keyword_only' de
-        # aviso_carrera.csv — verificado que son subconjunto estricto
+        # aviso_entrada.csv — verificado que son subconjunto estricto
         # (151 ⊂ 342 en Derecho). Se dejan por compatibilidad con
         # análisis existentes; conviene retirarlas en una limpieza
         # posterior, no acá.
@@ -752,7 +752,7 @@ def main(dir_crudo, dir_maestras):
                 continue
             pares_inst[(idf, iid)] = {
                 'aviso_id': idf, 'id_institucion': iid,
-                'n_carreras_declaradas_aviso': p['n_carreras_declaradas']}
+                'n_entradas_declaradas_aviso': p['n_entradas_declaradas']}
             m = inst_meta.setdefault(iid, {
                 'id_institucion': iid,
                 'id_institucion_sqlserver': i.get('idInstitucionSqlServer'),
@@ -779,18 +779,18 @@ def main(dir_crudo, dir_maestras):
     # ══ conteos sobre pares deduplicados ════════════════════════
     # Un aviso observado en varias corridas es UN aviso, no N. Los
     # contadores se derivan de las claves compuestas, no del loop.
-    n_por_carrera = Counter(f['carrera_trabajando'] for f in pares_car.values()
+    n_por_carrera = Counter(f['entrada_trabajando'] for f in pares_car.values()
                             if f['fuente'] == 'declarada')
     n_especifico  = Counter(
-        f['carrera_trabajando'] for f in pares_car.values()
+        f['entrada_trabajando'] for f in pares_car.values()
         if f['fuente'] == 'declarada'
-        and (f['n_carreras_declaradas_aviso'] or 0) <= UMBRAL_AVISO_GENERICO)
+        and (f['n_entradas_declaradas_aviso'] or 0) <= UMBRAL_AVISO_GENERICO)
     n_por_inst    = Counter(f['id_institucion'] for f in pares_inst.values())
     # Mismo criterio que en carreras: los avisos que tildan media
     # taxonomía también tildan casi todas las instituciones.
     n_inst_espec  = Counter(
         f['id_institucion'] for f in pares_inst.values()
-        if (f['n_carreras_declaradas_aviso'] or 0) <= UMBRAL_AVISO_GENERICO)
+        if (f['n_entradas_declaradas_aviso'] or 0) <= UMBRAL_AVISO_GENERICO)
     conf_por_emp  = Counter(a['empresa_id'] for a in avisos.values()
                             if a['empresa_confidencial']
                             and a['empresa_id'] is not None)
@@ -835,16 +835,16 @@ def main(dir_crudo, dir_maestras):
     # carreras. Se cuenta sobre `avisos`, que ya está deduplicado por
     # aviso_id; contarlo dentro del ciclo de observaciones inflaría el
     # número tantas veces como áreas haya visto cada aviso.
-    conteo_conjuntos = Counter(a['hash_carreras'] for a in avisos.values()
-                               if a.get('hash_carreras'))
+    conteo_conjuntos = Counter(a['hash_entradas'] for a in avisos.values()
+                               if a.get('hash_entradas'))
     for a in avisos.values():
-        h = a.get('hash_carreras')
+        h = a.get('hash_entradas')
         a['n_avisos_mismo_conjunto'] = conteo_conjuntos[h] if h else None
 
     n_av = escribir_csv_simple(M('avisos.csv'), list(avisos.values()),
                                COLS_AVISOS)
-    n_ac = escribir_csv_simple(M('aviso_carrera.csv'), list(pares_car.values()),
-                               COLS_AVISO_CARRERA)
+    n_ac = escribir_csv_simple(M('aviso_entrada.csv'), list(pares_car.values()),
+                               COLS_AVISO_ENTRADA)
     n_at = escribir_csv_simple(M('aviso_termino.csv'),
                                list(pares_term.values()), COLS_AVISO_TERMINO)
     n_ah = escribir_csv_simple(M('aviso_habilidad.csv'), list(pares_hab.values()),
@@ -855,7 +855,7 @@ def main(dir_crudo, dir_maestras):
     # Homologación: una tabla más, no una columna en las existentes.
     # El grano cambia —una carrera puede abrir a varios programas y dos
     # carreras pueden cerrar en uno—, así que colgarla de
-    # aviso_carrera.csv obligaría a listas dentro de una celda.
+    # aviso_entrada.csv obligaría a listas dentro de una celda.
     n_ap, aviso_prog = 0, None
     if JOIN_DISPONIBLE:
         aviso_prog, falta = derivar_aviso_programa(
@@ -872,8 +872,8 @@ def main(dir_crudo, dir_maestras):
 
     n_em, man_em = escribir_csv(M('empresas.csv'), filas_emp,
                                 COLS_EMPRESAS, 'empresa_id')
-    n_ca, man_ca = escribir_csv(M('carreras_trabajando.csv'), filas_car,
-                                COLS_CARRERAS, 'carrera_trabajando')
+    n_ca, man_ca = escribir_csv(M('entradas_trabajando.csv'), filas_car,
+                                COLS_ENTRADAS, 'entrada_trabajando')
     n_in, man_in = escribir_csv(M('instituciones.csv'), filas_inst,
                                 COLS_INSTITUCIONES, 'id_institucion')
 
@@ -891,18 +891,18 @@ def main(dir_crudo, dir_maestras):
     dur   = sorted(a['dias_publicado_hasta_baja'] for a in obs
                    if a['dias_publicado_hasta_baja'] is not None)
     genericos = sum(1 for a in vals
-                    if (a['n_carreras_declaradas'] or 0) > UMBRAL_AVISO_GENERICO)
+                    if (a['n_entradas_declaradas'] or 0) > UMBRAL_AVISO_GENERICO)
 
     print(f"\n{'='*64}\n  MAESTRAS  →  {dir_maestras}/\n{'='*64}")
     print(f"  avisos.csv              {n_av:7d}")
-    print(f"  aviso_carrera.csv       {n_ac:7d}")
+    print(f"  aviso_entrada.csv       {n_ac:7d}")
     print(f"  aviso_termino.csv       {n_at:7d}")
     print(f"  aviso_habilidad.csv     {n_ah:7d}")
     print(f"  aviso_institucion.csv   {n_ai:7d}")
     if n_ap:
         print(f"  aviso_programa.csv      {n_ap:7d}")
     print(f"  empresas.csv            {n_em:7d}   (+{man_em} col. manuales)")
-    print(f"  carreras_trabajando.csv {n_ca:7d}   (+{man_ca} col. manuales)")
+    print(f"  entradas_trabajando.csv {n_ca:7d}   (+{man_ca} col. manuales)")
     print(f"  instituciones.csv       {n_in:7d}   (+{man_in} col. manuales)")
 
     print(f"\n  Avisos con detalle ok  : {len(ok)}/{len(vals)}")
@@ -913,7 +913,7 @@ def main(dir_crudo, dir_maestras):
     print(f"    identificados por id : {recup} "
           f"({pct(recup, max(conf,1))} de los confidenciales)")
     print(f"  Sin carreras declaradas: "
-          f"{sum(1 for a in ok if not a['n_carreras_declaradas'])}")
+          f"{sum(1 for a in ok if not a['n_entradas_declaradas'])}")
     print(f"  Con habilidades        : "
           f"{sum(1 for a in ok if a['n_habilidades'])} "
           f"({pct(sum(1 for a in ok if a['n_habilidades']), max(len(ok),1))})")
@@ -950,8 +950,8 @@ def main(dir_crudo, dir_maestras):
     print(f"    conjuntos compartidos  : {len(comp)} conjunto{s_} en "
           f"{n_en_comp} avisos")
     if comp:
-        tam = {a['hash_carreras']: a['n_carreras_declaradas']
-               for a in avisos.values() if a.get('hash_carreras')}
+        tam = {a['hash_entradas']: a['n_entradas_declaradas']
+               for a in avisos.values() if a.get('hash_entradas')}
         print(f"      los mayores (avisos × tamaño del conjunto):")
         for n, h in sorted(comp, reverse=True)[:5]:
             print(f"        {n:>4} avisos × {tam.get(h, '?')} carreras")
@@ -982,7 +982,7 @@ def main(dir_crudo, dir_maestras):
             print(f"        ... y {len(sin_map) - 10} más")
         print(f"    Recordá: sobre-atribuye. Es contexto, no clasificación.")
 
-    # El pie decía "completá la homologación en carreras_trabajando.csv
+    # El pie decía "completá la homologación en entradas_trabajando.csv
     # agregando carrera_sies…", que es la ruta contra las genéricas SIES
     # y quedó superada por el catálogo propio. Mandaba a hacer un trabajo
     # que ya está hecho, en el archivo equivocado.

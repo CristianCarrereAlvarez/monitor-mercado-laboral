@@ -285,7 +285,7 @@ CARRERAS_POR_AREA = {
 #   buscador de trabajando.com devuelve resultados tangenciales, así que
 #   esta ruta sobre-atribuye. Es una señal de contexto, no una
 #   clasificación del aviso. La atribución fuerte sigue siendo la
-#   homologación manual de `carrera_trabajando` → SIES.
+#   homologación manual de `entrada_trabajando` → SIES.
 #
 #   De los 199 pares, solo 16 traducen algo distinto a la identidad; el
 #   resto es término == nombre SIES. El aporte real de esta ruta es

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Revisa la homologación carrera_trabajando → programa propio.
+# Revisa la homologación entrada_trabajando → programa propio.
 #
 #   ./validar.sh                          # informe
 #   ./validar.sh --adoptar-nombres-maestra   # y arregla los espacios
@@ -18,5 +18,5 @@ DATOS="$("$REPO/capturar.sh" --donde)" || exit 1
 
 exec env PYTHONPATH="$REPO" python3 -u "$REPO/validar_homologacion.py" \
     --homologacion "$DATOS/maestras/homologacion.csv" \
-    --carreras "$DATOS/maestras/carreras_trabajando.csv" \
-    --aviso-carrera "$DATOS/maestras/aviso_carrera.csv" "$@"
+    --carreras "$DATOS/maestras/entradas_trabajando.csv" \
+    --aviso-carrera "$DATOS/maestras/aviso_entrada.csv" "$@"

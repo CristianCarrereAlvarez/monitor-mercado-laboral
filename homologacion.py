@@ -1,18 +1,18 @@
 """
-El join carrera_trabajando → programa propio
+El join entrada_trabajando → programa propio
 =============================================
 
 Un solo lugar donde se define **cómo se cruza** la homologación con las
-maestras. Todo lo que necesite resolver un nombre de carrera pasa por
+maestras. Todo lo que necesite resolver una entrada de trabajando pasa por
 acá; nadie vuelve a escribir el cruce a mano.
 
 POR QUÉ ES UN MÓDULO Y NO UNA LÍNEA EN CADA SCRIPT
-  La clave del join es el nombre de la carrera, un texto libre que
+  La clave del join es el nombre de la entrada, texto que
   escribe trabajando.cl. Tres de los 528 traen **espacios dobles** y
   once traen espacio final (`'Música  '`, `'Servicios  Posventa Área
   Automotriz'`). Un cruce por igualdad exacta funciona hasta que una de
   las dos puntas pierde o gana un espacio —al abrir el CSV en una
-  planilla, al copiarlo entre máquinas— y ahí esas carreras
+  planilla, al copiarlo entre máquinas— y ahí esas entradas
   **desaparecen del análisis sin que nada avise**. Es la lección 10.
 
   La respuesta no es corregir los archivos cada vez: es que el cruce
@@ -30,7 +30,7 @@ QUÉ NORMALIZA, Y QUÉ NO
 
   La única colisión es `Ingeniería Civil en Minas` / `Ingeniería civil
   en minas`: dos entradas de la lista de trabajando que son **la misma
-  carrera escrita distinto**, con destino, tipo_relacion, estado y
+  formación escrita distinto**, con destino, tipo_relacion, estado y
   confianza idénticos. Plegarlas es lo correcto, y por eso la
   homologación las trae fundidas en una sola fila.
 
@@ -45,7 +45,7 @@ USO
     for d in H.destinos('Música  '):
         print(d['tipo_entrada'], d['programa_propio'] or d['isced_cod'])
 
-  `destinos()` devuelve **una lista**: nueve carreras abren a varios
+  `destinos()` devuelve **una lista**: nueve entradas abren a varios
   programas (`tipo_relacion = multiple`). Devolver el primero y callar
   los otros sería inventar una atribución única donde el autor decidió
   que hay varias.
@@ -115,7 +115,7 @@ class Homologacion:
         self.filas = filas
         self._idx = defaultdict(list)
         for r in filas:
-            self._idx[clave(r.get('carrera_trabajando'))].append(r)
+            self._idx[clave(r.get('entrada_trabajando'))].append(r)
 
     # ── construcción ───────────────────────────────────────────────
     @classmethod
@@ -134,8 +134,8 @@ class Homologacion:
 
     # ── consulta ───────────────────────────────────────────────────
     def destinos(self, nombre):
-        """Las filas de homologación de un nombre. Lista vacía si no
-        está homologado; varias si `tipo_relacion = multiple`."""
+        """Las filas de homologación de una entrada. Lista vacía si no
+        está homologada; varias si `tipo_relacion = multiple`."""
         return self._idx.get(clave(nombre), [])
 
     def tipo_entrada(self, nombre):
@@ -162,7 +162,7 @@ class Homologacion:
     # ── diagnóstico del join ───────────────────────────────────────
     def cobertura(self, nombres):
         """Cruza una lista de nombres observados (con repetición, tal
-        como vienen de `aviso_carrera.csv`) contra la homologación.
+        como vienen de `aviso_entrada.csv`) contra la homologación.
 
         Devuelve tres cosas, porque son tres problemas distintos:
           resueltas  — menciones que llegan a un programa propio

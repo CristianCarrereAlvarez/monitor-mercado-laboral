@@ -1,9 +1,9 @@
 """
-Validación de la homologación carrera_trabajando → programa propio
+Validación de la homologación entrada_trabajando → programa propio
 ===================================================================
 
-`homologacion.csv` es trabajo humano: 528 nombres de carrera declarados
-en los avisos, mapeados a un catálogo propio de programas formativos, a
+`homologacion.csv` es trabajo humano: las 527 entradas que trabajando.cl
+declara en el campo `carreras` de sus avisos, mapeadas a un catálogo propio de programas formativos, a
 un campo ISCED-F, a un nivel, o a nada. Este script no lo produce ni lo
 corrige: lo **revisa**, y separa tres cosas que no son lo mismo.
 
@@ -14,7 +14,7 @@ corrige: lo **revisa**, y separa tres cosas que no son lo mismo.
   ·  INFORME  contexto para saber dónde está parado el trabajo.
 
 POR QUÉ EXISTE
-  El mapeo no es "carrera → programa" y ya. Un nombre de aviso puede
+  El mapeo no es "entrada → programa" y ya. Una entrada puede
   apuntar a un programa, a un campo de estudio (`Ingeniería`), a un
   nivel sin disciplina (`MBA`), a un cargo (`Paramédico`) o a nada
   (`Otra carrera`). Cinco destinos distintos, cada uno con su propia
@@ -24,7 +24,7 @@ POR QUÉ EXISTE
 
   El otro riesgo es el nombre mismo: es la clave del join y once de los
   528 traen espacios de más. Un cruce por igualdad exacta perdía esas
-  carreras **sin avisar** (lección 10). Ya no: el join pasa por
+  entradas **sin avisar** (lección 10). Ya no: el join pasa por
   `homologacion.clave()`, que colapsa espacios y mayúsculas, así que
   una diferencia de espaciado o de caja es cosmética. El script la reporta igual —dos archivos
   que deberían decir lo mismo no lo dicen— pero como ⚠, no como ⛔.
@@ -143,15 +143,15 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
     def n(r):
         return entero(r.get('n_avisos_especificos'))
 
-    por_carrera = defaultdict(list)
+    por_entrada = defaultdict(list)
     for r in H:
-        por_carrera[clave(r['carrera_trabajando'])].append(r)
-    total = sum(n(v[0]) for v in por_carrera.values())
+        por_entrada[clave(r['entrada_trabajando'])].append(r)
+    total = sum(n(v[0]) for v in por_entrada.values())
 
     print("=" * 68)
     print(f"  VALIDACIÓN DE LA HOMOLOGACIÓN")
     print("=" * 68)
-    print(f"  {len(H)} filas · {len(por_carrera)} carreras de trabajando · "
+    print(f"  {len(H)} filas · {len(por_entrada)} entradas de trabajando · "
           f"{total} menciones específicas")
     print(f"  catálogo propio: {len(prog)} programas · "
           f"ISCED-F: {len(isced)} códigos")
@@ -159,21 +159,21 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
     # ── 1. clave y orden ───────────────────────────────────────────
     # La clave es la del join —`homologacion.clave()`—, no el texto
     # crudo: dos grafías del mismo nombre son la misma fila.
-    dup = [k for k, c in Counter((clave(r['carrera_trabajando']),
+    dup = [k for k, c in Counter((clave(r['entrada_trabajando']),
                                   r['orden_relacion']) for r in H).items()
            if c > 1]
     for k in dup:
-        variantes = sorted({r['carrera_trabajando'] for r in H
-                            if clave(r['carrera_trabajando']) == k[0]})
+        variantes = sorted({r['entrada_trabajando'] for r in H
+                            if clave(r['entrada_trabajando']) == k[0]})
         destinos = {(r['tipo_entrada'], r['programa_propio'], r['isced_cod'])
-                    for r in H if clave(r['carrera_trabajando']) == k[0]
+                    for r in H if clave(r['entrada_trabajando']) == k[0]
                     and r['orden_relacion'] == k[1]}
         que = ('con el MISMO destino: fundilas en una fila'
                if len(destinos) == 1 else
                'con destinos DISTINTOS: hay que decidir cuál vale')
         inf.error('dos grafías del mismo nombre caen en la misma clave '
                   'de join', f"{variantes}  orden {k[1]} — {que}")
-    for k, v in por_carrera.items():
+    for k, v in por_entrada.items():
         ordenes = sorted(entero(r['orden_relacion']) for r in v)
         if ordenes != list(range(1, len(v) + 1)):
             inf.error('orden_relacion no correlativo desde 1',
@@ -184,7 +184,7 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
         for r in H:
             if r.get(col, '') not in validos:
                 inf.error(f'valor fuera del vocabulario de `{col}`',
-                          f"{r['carrera_trabajando'][:44]:44s} "
+                          f"{r['entrada_trabajando'][:44]:44s} "
                           f"{col} = {r.get(col)!r}", n(r))
 
     # ── 3. coherencia tipo_entrada ↔ destino ───────────────────────
@@ -198,12 +198,12 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
         if (esp_p == 'lleno') != hay_p:
             inf.error(f'tipo_entrada `{te}` con programa_propio '
                       f'{"vacío" if esp_p == "lleno" else "lleno"}',
-                      f"{r['carrera_trabajando'][:44]:44s} "
+                      f"{r['entrada_trabajando'][:44]:44s} "
                       f"→ {r['programa_propio'] or '(vacío)'}", n(r))
         if (esp_i == 'lleno') != hay_i:
             inf.error(f'tipo_entrada `{te}` con isced_cod '
                       f'{"vacío" if esp_i == "lleno" else "lleno"}',
-                      f"{r['carrera_trabajando'][:44]:44s} "
+                      f"{r['entrada_trabajando'][:44]:44s} "
                       f"→ {r['isced_cod'] or '(vacío)'}", n(r))
 
     # ── 4. destinos que existen ────────────────────────────────────
@@ -211,26 +211,26 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
         p = r['programa_propio'].strip()
         if p and p not in prog:
             inf.error('programa_propio que no está en el catálogo',
-                      f"{r['carrera_trabajando'][:44]:44s} → {p}", n(r))
+                      f"{r['entrada_trabajando'][:44]:44s} → {p}", n(r))
         c = r['isced_cod'].strip()
         if c:
             if c not in isced:
                 inf.error('isced_cod que no existe en ISCED-F 2013',
-                          f"{r['carrera_trabajando'][:44]:44s} → {c}", n(r))
+                          f"{r['entrada_trabajando'][:44]:44s} → {c}", n(r))
             elif nz(r['isced_nombre']) != nz(isced[c]):
                 inf.error('isced_nombre que no corresponde al código',
-                          f"{r['carrera_trabajando'][:40]:40s} {c} dice "
+                          f"{r['entrada_trabajando'][:40]:40s} {c} dice "
                           f"{r['isced_nombre']!r}, es {isced[c]!r}", n(r))
 
     # ── 5. multiple ↔ número de filas ──────────────────────────────
-    for k, v in por_carrera.items():
+    for k, v in por_entrada.items():
         marcadas = sum(1 for r in v if r['tipo_relacion'] == 'multiple')
         if len(v) > 1 and marcadas != len(v):
-            inf.error('carrera con varios destinos sin marcar todas '
+            inf.error('entrada con varios destinos sin marcar todas '
                       '`multiple`', f"{k}  ({len(v)} filas, {marcadas} "
                       f"marcadas)", n(v[0]))
         if len(v) == 1 and marcadas:
-            inf.error('`multiple` en una carrera con un solo destino', k,
+            inf.error('`multiple` en una entrada con un solo destino', k,
                       n(v[0]))
 
     # ── 6. el join contra la maestra ───────────────────────────────
@@ -239,13 +239,13 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
     adoptar = {}
     if f_carr and os.path.exists(f_carr):
         CT = leer(f_carr, 'la maestra de carreras')
-        maes = {r['carrera_trabajando'] for r in CT}
+        maes = {r['entrada_trabajando'] for r in CT}
         idx_m = defaultdict(list)
         for x in maes:
             idx_m[clave(x)].append(x)
         maes_k = {clave(x) for x in maes}
-        for x in sorted({v[0]['carrera_trabajando']
-                         for v in por_carrera.values()} - maes):
+        for x in sorted({v[0]['entrada_trabajando']
+                         for v in por_entrada.values()} - maes):
             iguales = [y for y in idx_m.get(clave(x), []) if y != x]
             if iguales:
                 # El join normaliza espacios (ver homologacion.clave), así
@@ -256,17 +256,17 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
                 inf.rev('el nombre difiere en espacios o mayúsculas '
                         '(cosmético: el join los cruza igual)',
                         f"homologación {x!r}  ≠  maestra {iguales[0]!r}",
-                        n(por_carrera[clave(x)][0]))
+                        n(por_entrada[clave(x)][0]))
             elif clave(x) not in maes_k:
-                inf.error('carrera en la homologación que no está en la '
-                          'maestra', repr(x), n(por_carrera[clave(x)][0]))
+                inf.error('entrada de la homologación que no está en la '
+                          'maestra', repr(x), n(por_entrada[clave(x)][0]))
         for x in sorted(maes):
-            if clave(x) not in por_carrera:
-                inf.rev('carrera de la maestra sin fila de homologación',
+            if clave(x) not in por_entrada:
+                inf.rev('entrada de la maestra sin fila de homologación',
                         repr(x))
     else:
         print(f"\n  ·  Sin maestra a mano: no se validó el join por nombre."
-              f"\n     (--carreras <dir maestras>/carreras_trabajando.csv)")
+              f"\n     (--carreras <dir maestras>/entradas_trabajando.csv)")
 
     # (El chequeo de `no_homologable_carrera` se retiró: el valor dejó
     # de existir. Que un programa no tenga genérica SIES es un atributo
@@ -295,14 +295,14 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
             continue
         niveles = {x.strip() for x in p['nivel_condicion'].split('|')
                    if x.strip()}
-        ln = nivel_del_nombre(r['carrera_trabajando'])
+        ln = nivel_del_nombre(r['entrada_trabajando'])
         etq = None
         if ln == 'tecnico' and 'tecnico' not in niveles:
             etq = 'el nombre dice técnico, el programa no se imparte en técnico'
         elif ln == 'superior' and niveles == {'tecnico'}:
             etq = 'el nombre dice ingeniería/licenciatura, el programa es solo técnico'
         if etq:
-            inf.rev(etq, f"{r['carrera_trabajando'][:40]:40s} → "
+            inf.rev(etq, f"{r['entrada_trabajando'][:40]:40s} → "
                          f"{r['programa_propio'][:32]:32s} "
                          f"[{'|'.join(sorted(niveles))}] "
                          f"{r['estado']}/{r['confianza']}", n(r))
@@ -314,10 +314,10 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
         rel = r['tipo_relacion'].strip()
         if tiene and not rel:
             inf.error('fila con programa y sin `tipo_relacion`',
-                      f"{r['carrera_trabajando'][:44]}", n(r))
+                      f"{r['entrada_trabajando'][:44]}", n(r))
         if not tiene and rel:
             inf.error('`tipo_relacion` en una fila sin programa',
-                      f"{r['carrera_trabajando'][:44]:44s} = {rel}", n(r))
+                      f"{r['entrada_trabajando'][:44]:44s} = {rel}", n(r))
 
     # ── 10. `exacta` es una propiedad de los nombres, no una opinión ─
     for r in H:
@@ -325,14 +325,14 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
             continue
         fuerte = lambda x: re.sub(r'\s+', ' ',
                                   re.sub(r'[^a-z0-9 ]', ' ', nz(x))).strip()
-        igual = fuerte(r['carrera_trabajando']) == fuerte(r['programa_propio'])
+        igual = fuerte(r['entrada_trabajando']) == fuerte(r['programa_propio'])
         if igual and r['tipo_relacion'] != 'exacta':
             inf.rev('el nombre ES el del programa, pero no dice `exacta`',
-                    f"{r['carrera_trabajando'][:40]:40s} "
+                    f"{r['entrada_trabajando'][:40]:40s} "
                     f"({r['tipo_relacion']})", n(r))
         if not igual and r['tipo_relacion'] == 'exacta':
             inf.error('`exacta` con nombres que no coinciden',
-                      f"{r['carrera_trabajando'][:36]:36s} ≠ "
+                      f"{r['entrada_trabajando'][:36]:36s} ≠ "
                       f"{r['programa_propio'][:36]}", n(r))
 
     # ── 11. el nombre no dice el nivel, el catálogo tiene los dos ───
@@ -346,12 +346,12 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
     por_nucleo = defaultdict(list)
     for p in prog:
         por_nucleo[nucleo(p)].append(p)
-    for k, v in por_carrera.items():
+    for k, v in por_entrada.items():
         if len(v) > 1:
             continue          # ya está resuelto con `multiple`
         r = v[0]
         d = r['programa_propio'].strip()
-        if not d or PREFIJO.match(nz(r['carrera_trabajando'])):
+        if not d or PREFIJO.match(nz(r['entrada_trabajando'])):
             continue          # el nombre YA declara un nivel
         if not PREFIJO.match(nz(d)):
             continue          # el destino no agrega ninguno
@@ -361,19 +361,19 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
                  and not p.startswith('Ingeniería Civil')]
         if otros and not d.startswith('Ingeniería Civil'):
             inf.rev('el nombre no declara nivel y el catálogo tiene otro',
-                    f"{r['carrera_trabajando'][:34]:34s} → {d[:32]:32s} "
+                    f"{r['entrada_trabajando'][:34]:34s} → {d[:32]:32s} "
                     f"(también: {otros[0][:30]})", n(r))
 
     # ── 12. destino «Ingeniería Civil …» sin que el nombre lo diga ──
     for r in H:
         d = r['programa_propio'].strip()
         if d.startswith('Ingeniería Civil') and \
-                'civil' not in nz(r['carrera_trabajando']):
+                'civil' not in nz(r['entrada_trabajando']):
             alt = [p for p in por_nucleo[nucleo(d)]
                    if not p.startswith('Ingeniería Civil')]
             inf.rev('destino «Ingeniería Civil» sin que el aviso diga '
                     '«civil»',
-                    f"{r['carrera_trabajando'][:36]:36s} → {d[:34]:34s}"
+                    f"{r['entrada_trabajando'][:36]:36s} → {d[:34]:34s}"
                     + (f" (existe {alt[0][:28]})" if alt else
                        " — no hay alternativa en el catálogo"), n(r))
 
@@ -382,7 +382,7 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
     # ── cobertura real del join ────────────────────────────────────
     # Los conteos de arriba salen de n_avisos_especificos, que es una
     # columna del propio archivo. Esto cruza de verdad contra
-    # aviso_carrera.csv: es la prueba de que el join funciona.
+    # aviso_entrada.csv: es la prueba de que el join funciona.
     if f_ac and os.path.exists(f_ac):
         hom = Homologacion(H)
         try:
@@ -393,13 +393,13 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
         with open(f_ac, encoding='utf-8-sig', newline='') as f:
             for r in csv.DictReader(f):
                 if (r.get('fuente') == 'declarada'
-                        and entero(r.get('n_carreras_declaradas_aviso'))
+                        and entero(r.get('n_entradas_declaradas_aviso'))
                         <= UMBRAL):
-                    nombres.append(r['carrera_trabajando'])
+                    nombres.append(r['entrada_trabajando'])
         res, sin_prog, huer = hom.cobertura(nombres)
         t = len(nombres) or 1
         perdidas = sum(huer.values())
-        cob.append(f"\n  cobertura del join contra aviso_carrera.csv"
+        cob.append(f"\n  cobertura del join contra aviso_entrada.csv"
               f"  ({len(nombres)} menciones específicas declaradas)")
         cob.append(f"    llegan a un programa propio   {res:6d}  "
               f"{res * 100 / t:5.1f}%")
@@ -412,7 +412,7 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
             inf.error('nombre declarado en los avisos que no está en la '
                       'homologación', f"{nombre}  ({c} menciones)", c)
     else:
-        cob.append(f"\n  ·  Sin aviso_carrera.csv: no se midió la cobertura real "
+        cob.append(f"\n  ·  Sin aviso_entrada.csv: no se midió la cobertura real "
               f"del join.")
 
 
@@ -421,8 +421,8 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
     # ninguna fila cambia de destino.
     if adoptar and adoptar_nombres:
         for r in H:
-            if r['carrera_trabajando'] in adoptar:
-                r['carrera_trabajando'] = adoptar[r['carrera_trabajando']]
+            if r['entrada_trabajando'] in adoptar:
+                r['entrada_trabajando'] = adoptar[r['entrada_trabajando']]
         with open(f_hom, 'w', encoding='utf-8', newline='') as f:
             w = csv.DictWriter(f, fieldnames=list(H[0].keys()))
             w.writeheader()
@@ -445,13 +445,13 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
     def bloque(titulo, clave, orden):
         print(f"\n  {titulo}")
         cnt, men = Counter(), Counter()
-        for k, v in por_carrera.items():
+        for k, v in por_entrada.items():
             x = clave(v)
             cnt[x] += 1
             men[x] += n(v[0])
         for x in orden:
             if cnt[x]:
-                print(f"    {x:22s} {cnt[x]:4d} carreras  {men[x]:6d} "
+                print(f"    {x:22s} {cnt[x]:4d} entradas  {men[x]:6d} "
                       f"menciones  {men[x] * 100 / total:5.1f}%")
 
     bloque('destino (tipo_entrada)', lambda v: v[0]['tipo_entrada'],
@@ -463,24 +463,24 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
            ['alta', 'baja', 'media'])
 
     sin = [p for p in prog if not any(r['programa_propio'] == p for r in H)]
-    print(f"\n  programas del catálogo que no reciben ninguna carrera: "
+    print(f"\n  programas del catálogo que no reciben ninguna entrada: "
           f"{len(sin)} de {len(prog)}")
     for p in sorted(sin):
         print(f"      {p}")
 
-    pend = sorted((v for v in por_carrera.values()
+    pend = sorted((v for v in por_entrada.values()
                    if all(r['estado'] != 'validado' for r in v)),
                   key=lambda v: -n(v[0]))
     peso = sum(n(v[0]) for v in pend)
-    print(f"\n  cola de revisión: {len(pend)} carreras, {peso} menciones "
+    print(f"\n  cola de revisión: {len(pend)} entradas, {peso} menciones "
           f"({peso * 100 / total:.1f}% del total)")
     for v in pend[:tope]:
         r = v[0]
         dest = r['programa_propio'] or f"{r['isced_cod']} {r['isced_nombre']}"
-        print(f"    {n(r):5d}  {r['carrera_trabajando'][:40]:40s} "
+        print(f"    {n(r):5d}  {r['entrada_trabajando'][:40]:40s} "
               f"{r['confianza']:5s} → {dest[:44]}")
     if len(pend) > tope:
-        print(f"    … y {len(pend) - tope} carreras más "
+        print(f"    … y {len(pend) - tope} entradas más "
               f"({sum(n(v[0]) for v in pend[tope:])} menciones)")
 
     print(f"\n{'=' * 68}")
@@ -495,9 +495,9 @@ if __name__ == "__main__":
     ap.add_argument('--programas',
                     default=os.path.join(REPO, 'programas_propios.csv'))
     ap.add_argument('--isced', default=os.path.join(REPO, 'isced_f_2013.csv'))
-    ap.add_argument('--carreras', default='maestras/carreras_trabajando.csv',
+    ap.add_argument('--carreras', default='maestras/entradas_trabajando.csv',
                     help='la maestra, para validar el join por nombre')
-    ap.add_argument('--aviso-carrera', default='maestras/aviso_carrera.csv',
+    ap.add_argument('--aviso-carrera', default='maestras/aviso_entrada.csv',
                     help='para medir la cobertura real del join')
     ap.add_argument('--adoptar-nombres-maestra', action='store_true',
                     help='reescribe en la homologación los nombres que solo '

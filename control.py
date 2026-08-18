@@ -107,7 +107,7 @@ def pct(x, b):
 
 def bloque_umbral(avisos):
     print(f"\n── 1. Umbral de genericidad (UMBRAL_AVISO_GENERICO = {UMBRAL})")
-    dist = Counter(entero(a.get('n_carreras_declaradas')) for a in avisos)
+    dist = Counter(entero(a.get('n_entradas_declaradas')) for a in avisos)
 
     chicos = sorted(v for v in dist if v <= UMBRAL)
     grandes = sorted(v for v in dist if v > UMBRAL)
@@ -148,7 +148,7 @@ def bloque_umbral(avisos):
 def bloque_genericos(avisos):
     print(f"\n── 2. Avisos genéricos (declaran > {UMBRAL} carreras)")
     gen = [a for a in avisos
-           if entero(a.get('n_carreras_declaradas')) > UMBRAL]
+           if entero(a.get('n_entradas_declaradas')) > UMBRAL]
     if not gen:
         print("   ninguno")
         return
@@ -178,17 +178,17 @@ def bloque_conjuntos(avisos):
     identifica al perfil guardado es que el conjunto pertenezca a UNA
     sola empresa y tenga tamaño suficiente para no informar nada."""
     print(f"\n── 3. Conjuntos de carreras reutilizados")
-    if not any('hash_carreras' in a for a in avisos):
-        print("   sin columna hash_carreras: reconsolidá para tenerla")
+    if not any('hash_entradas' in a for a in avisos):
+        print("   sin columna hash_entradas: reconsolidá para tenerla")
         return
 
     tam, emp = {}, defaultdict(set)
     cuenta = Counter()
     for a in avisos:
-        h = a.get('hash_carreras')
+        h = a.get('hash_entradas')
         if not h:
             continue
-        tam[h] = entero(a.get('n_carreras_declaradas'))
+        tam[h] = entero(a.get('n_entradas_declaradas'))
         emp[h].add(a.get('empresa_id'))
         cuenta[h] += 1
 
@@ -316,9 +316,9 @@ def bloque_terminos(avisos, aviso_termino, aviso_carrera):
         for f in aviso_carrera:
             if f.get('fuente') != 'declarada':
                 continue
-            if entero(f.get('n_carreras_declaradas_aviso')) > UMBRAL:
+            if entero(f.get('n_entradas_declaradas_aviso')) > UMBRAL:
                 continue
-            decl[f['aviso_id']].add(f.get('carrera_trabajando') or '')
+            decl[f['aviso_id']].add(f.get('entrada_trabajando') or '')
 
     por_term = defaultdict(list)
     for f in aviso_termino:
@@ -336,7 +336,7 @@ def bloque_terminos(avisos, aviso_termino, aviso_carrera):
         # genéricos. No "los que declaran carreras" — eso infla el
         # porcentaje y no es lo que dice la especificación.
         espec = [i for i in ids
-                 if entero(info.get(i, {}).get('n_carreras_declaradas')) <= UMBRAL]
+                 if entero(info.get(i, {}).get('n_entradas_declaradas')) <= UMBRAL]
         n_car = sum(1 for i in espec
                     if any(hay_prefijo(tt, c) for c in decl.get(i, ())))
         emp = Counter(info.get(i, {}).get('empresa_id') for i in ids
@@ -427,7 +427,7 @@ def main(dir_maestras):
     bloque_concentracion(avisos)
     at = leer(p('aviso_termino.csv'))
     bloque_deriva(avisos, at)
-    bloque_terminos(avisos, at, leer(p('aviso_carrera.csv')))
+    bloque_terminos(avisos, at, leer(p('aviso_entrada.csv')))
 
     print()
     bloque_panel(avisos)

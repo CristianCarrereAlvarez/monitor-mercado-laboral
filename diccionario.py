@@ -49,13 +49,13 @@ try:
     import consolidar as C
     ESQUEMAS.update({
         'avisos.csv':            C.COLS_AVISOS,
-        'aviso_carrera.csv':     C.COLS_AVISO_CARRERA,
+        'aviso_entrada.csv':     C.COLS_AVISO_ENTRADA,
         'aviso_termino.csv':     C.COLS_AVISO_TERMINO,
         'aviso_habilidad.csv':   C.COLS_AVISO_HABILIDAD,
         'aviso_institucion.csv': C.COLS_AVISO_INSTITUCION,
         'aviso_programa.csv':    C.COLS_AVISO_PROGRAMA,
         'empresas.csv':          C.COLS_EMPRESAS,
-        'carreras_trabajando.csv': C.COLS_CARRERAS,
+        'entradas_trabajando.csv': C.COLS_ENTRADAS,
         'instituciones.csv':     C.COLS_INSTITUCIONES,
     })
 except Exception as e:

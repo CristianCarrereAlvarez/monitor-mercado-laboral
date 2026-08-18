@@ -6,10 +6,10 @@ Genera `coocurrencia_programas.html`, un archivo autocontenido que se
 abre con doble clic y muestra, para cada **programa propio**, dos cosas:
 
   1. con qué OTROS programas lo piden en el mismo aviso;
-  2. qué nombres de `carrera_trabajando` se homologaron ahí.
+  2. qué entradas de trabajando se homologaron ahí.
 
 LA UNIDAD CAMBIÓ, Y ESO CAMBIA LO QUE MIDE
-  La versión anterior tenía como unidad `carrera_trabajando`, el texto
+  La versión anterior tenía como unidad `entrada_trabajando`, el texto
   que escribe trabajando.cl. Servía para decidir la homologación —a qué
   familia pertenece un nombre— y ese trabajo ya está hecho.
 
@@ -165,7 +165,7 @@ def construir(dir_maestras):
     n_campo = n_generico = 0
 
     for f in ap:
-        if entero(f.get('n_carreras_declaradas_aviso')) > UMBRAL:
+        if entero(f.get('n_entradas_declaradas_aviso')) > UMBRAL:
             n_generico += 1
             continue
         if f.get('tipo_entrada') != 'programa_propio':
@@ -176,7 +176,7 @@ def construir(dir_maestras):
         prog_por_aviso[a].add(p)
         meta.setdefault(p, (f.get('area_sies') or '',
                             f.get('isced_amplio_cod') or ''))
-        for nombre in (f.get('carreras_origen') or '').split(' | '):
+        for nombre in (f.get('entradas_origen') or '').split(' | '):
             if nombre.strip():
                 origen[p][nombre.strip()] += 1
 

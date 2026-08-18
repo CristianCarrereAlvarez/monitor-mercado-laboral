@@ -619,7 +619,7 @@ Términos como "Historia", "Geografía", "Química", "Energía" son
 palabras comunes y probablemente se comporten igual.
 
 **Regla de uso derivada:** para cualquier análisis por carrera, filtrar
-`fuente == 'declarada'` en `aviso_carrera.csv`. Las filas
+`fuente == 'declarada'` en `aviso_entrada.csv`. Las filas
 `keyword_only` son trazabilidad, no evidencia. Costo: en Administración
 el 34,5% de los avisos no declara carreras, así que se pierde un tercio
 de la muestra. Es el precio de no inventar atribución.
@@ -714,7 +714,7 @@ catálogo de Bresler ya tiene 43 de esa forma. Bresler declara
 `Psicopedagogía`, `Pedagogía en Educación Diferencial`, `Trabajo Social`
 y `Técnico en Servicio Social` por separado, pero no las dos formas
 compuestas. La fuga es chica (2 de 506 = 0,4%) pero el corolario
-importa: **hay que seguir acumulando `carreras_trabajando.csv` a medida
+importa: **hay que seguir acumulando `entradas_trabajando.csv` a medida
 que se corren áreas.** No se puede congelar la taxonomía en 504.
 
 Lo mismo, más fuerte, con instituciones: 90 observadas en Derecho, **44
@@ -867,18 +867,18 @@ correr las veces que sea.
 | tabla | grano | clave |
 |---|---|---|
 | `avisos.csv` | 1 fila por aviso | `aviso_id` |
-| `aviso_carrera.csv` | aviso × carrera declarada | compuesta |
+| `aviso_entrada.csv` | aviso × entrada declarada | compuesta |
 | `aviso_termino.csv` | aviso × término de búsqueda | compuesta |
 | `aviso_habilidad.csv` | aviso × habilidad | compuesta |
 | `aviso_institucion.csv` | aviso × institución | compuesta |
 | `aviso_programa.csv` | aviso × programa propio o campo ISCED | compuesta |
 | `empresas.csv` | 1 fila por empresa | `empresa_id` |
-| `carreras_trabajando.csv` | 1 fila por nombre | `carrera_trabajando` |
+| `entradas_trabajando.csv` | 1 fila por entrada observada | `entrada_trabajando` |
 | `instituciones.csv` | 1 fila por institución | `id_institucion` |
 
 ### Columnas manuales — CRÍTICO
 
-`empresas.csv`, `carreras_trabajando.csv` e `instituciones.csv` usan
+`empresas.csv`, `entradas_trabajando.csv` e `instituciones.csv` usan
 upsert con **preservación de columnas manuales**: cualquier columna que
 el script no gestione se arrastra por clave. Las filas que dejan de
 aparecer en el crudo tampoco se borran.
@@ -944,7 +944,7 @@ quedan con `sies_por_termino = "Derecho"`, incluidos los 120 de
 Fundación Integra que son de salas cuna. Con el ~82% de falsos positivos
 medido en §5.8, la columna es **señal de contexto, no clasificación**.
 La atribución fuerte sigue siendo la homologación manual de
-`carrera_trabajando` → SIES.
+`entrada_trabajando` → SIES.
 
 Qué aporta de verdad: **solo 16 de los 199 pares traducen algo distinto
 a la identidad.** El valor está en normalizar esos 16 y en adjuntar el
@@ -956,13 +956,34 @@ edita después de una corrida, los términos viejos del crudo dejan de
 mapear y el número deja de ser 0.
 
 **Redundancia conocida:** `aviso_termino.csv` supersede las filas
-`fuente == 'keyword_only'` de `aviso_carrera.csv` (verificado:
+`fuente == 'keyword_only'` de `aviso_entrada.csv` (verificado:
 subconjunto estricto, 151 ⊂ 342 en Derecho). Se dejaron por
 compatibilidad; conviene retirarlas en una limpieza posterior.
 
-### El join carrera_trabajando → programa propio
+### Cómo se llama cada cosa
 
-La clave del cruce es el **nombre de la carrera**, texto que escribe
+Tres vocabularios distintos que conviene no mezclar. Los nombres se
+fijaron el 18 de agosto de 2026, después de comprobar que llamar
+«carrera» a lo que declara el aviso era falso el 9,2% de las veces.
+
+| en el proyecto | qué es | de dónde sale |
+|---|---|---|
+| **entrada de trabajando** (`entrada_trabajando`) | lo que el aviso declara en el campo `carreras` de la API. **No siempre es una carrera**: puede ser un programa, un campo de estudio, un nivel, un cargo o nada. `tipo_entrada` dice cuál | lista controlada de trabajando.cl, 527 valores |
+| **programa propio** (`programa_propio`) | una formación identificable del catálogo del autor | `programas_propios.csv`, 204 |
+| **carrera genérica SIES** (`carrera_generica_sies`) | la agrupación oficial de SIES. Su columna en la oferta se llama literalmente `Área Carrera Genérica` | SIES Oferta Académica, 297 valores |
+| **área SIES** (`area_sies`) | `Área del conocimiento` de SIES | 10 valores |
+
+**«Área Carrera Genérica» es el nombre que le pone SIES**, y arranca con
+«Área» aunque sus valores son carreras (`Medicina`, `Enfermería`,
+`Periodismo`), no áreas. Adoptar ese nombre literal chocaría con
+`area_sies`, que sí es un área; por eso la columna se llama
+`carrera_generica_sies`. **Los 203 valores que usa el catálogo propio
+existen los 203 en la oferta SIES 2026** — verificado contra el archivo,
+cero fuera de vocabulario.
+
+### El join entrada_trabajando → programa propio
+
+La clave del cruce es el **nombre de la entrada**, texto que escribe
 trabajando.cl. Tres de los 528 traen espacios dobles y once traen
 espacio final. Cualquier cruce por igualdad exacta funciona hasta que
 una de las dos puntas gana o pierde un espacio —al abrir el CSV en una
@@ -1007,7 +1028,7 @@ aviso nombra un campo, un nivel, un cargo o nada, no hay programa —
 7,1% de las menciones específicas. Forzarlas a uno es exactamente el
 error que la homologación existe para evitar.
 
-`validar.sh` mide la cobertura real cruzando contra `aviso_carrera.csv`:
+`validar.sh` mide la cobertura real cruzando contra `aviso_entrada.csv`:
 92,9% llega a un programa, 7,1% está homologado sin programa, y lo que
 quede sin fila de homologación sale como ⛔ — esas menciones sí se
 pierden.
@@ -1016,7 +1037,7 @@ pierden.
 
 Una tabla nueva, no una columna en las existentes. El grano cambia en
 las dos direcciones —una carrera puede abrir a varios programas y dos
-carreras pueden cerrar en uno—, así que colgarla de `aviso_carrera.csv`
+carreras pueden cerrar en uno—, así que colgarla de `aviso_entrada.csv`
 obligaría a meter listas dentro de una celda, que es justo lo que §5.7
 critica de v7.
 
@@ -1029,7 +1050,7 @@ tabla.
 `keyword_only` son trazabilidad del término, no atribución (§5.6)— y
 solo los destinos que existen. `nivel_formativo`, `solo_ocupacion` y
 `no_informativo` **no producen fila**: el aviso no nombró ninguna
-formación. Es el 1,4% de las menciones y siguen en `aviso_carrera.csv`.
+formación. Es el 1,4% de las menciones y siguen en `aviso_entrada.csv`.
 
 **Los campos ISCED sí entran**, con `programa_propio` vacío. Dejarlos
 afuera haría que un conteo por campo —el uso natural de la tabla— se
@@ -1043,7 +1064,7 @@ y esta fila es una de varias lecturas. Sumarlas como demanda
 independiente infla el conteo. Lección 7.
 
 Primera medición, sobre Derecho (342 avisos): 5.589 filas de
-`aviso_carrera` → **2.534 de `aviso_programa`**, de las cuales 324
+`aviso_entrada` → **2.534 de `aviso_programa`**, de las cuales 324
 vienen de avisos específicos. En esas 324, 54 colapsan dos o más
 carreras en un programa y 6 llevan `atribucion_multiple`.
 
@@ -1167,7 +1188,7 @@ en longitudinal. Hoy hay 42 avisos de baja y las 42 son `cota_superior`;
 ninguna duración medida. Un `./mensual.sh` en septiembre produce las
 primeras `observada`.
 
-**2. Homologación carreras trabajando → catálogo propio.** Es el cuello
+**2. Homologación entradas de trabajando → catálogo propio.** Es el cuello
 de botella real y **no depende de correr más áreas**. La ruta A (§6) no
 la reemplaza, porque va desde el término buscado y no desde lo que el
 aviso declara.
@@ -1177,13 +1198,14 @@ construyó un **catálogo propio de 204 programas formativos**
 (`programas_propios.csv`), cada uno respaldado por su genérica SIES
 cuando existe, por su distribución de niveles en la oferta 2026, y por
 sus tres códigos **ISCED-F 2013** (amplio, estrecho, detallado). Sobre
-él mapeó los 528 nombres: 542 filas, `maestras/homologacion.csv`.
+él mapeó las 527 entradas: 559 filas, `maestras/homologacion.csv`.
 
 **El hallazgo de diseño es que el mapeo no es «carrera → programa».**
-Un nombre de aviso puede nombrar cinco cosas distintas, y solo una es
-un programa:
+Y por eso la columna **no se llama `carrera`**: una entrada de la lista
+de trabajando puede nombrar cinco cosas distintas, y solo una es un
+programa:
 
-| `tipo_entrada` | qué nombra el aviso | carreras | menciones |
+| `tipo_entrada` | qué nombra el aviso | entradas | menciones |
 |---|---|---:|---:|
 | `programa_propio` | un programa identificable | 431 | 92,9% |
 | `campo_iscedf` | un campo de estudio, no un programa (`Ingeniería`, `Ingeniería Civil`) | 38 | 5,7% |
@@ -1301,7 +1323,7 @@ rehacer** cuando lleguen los meses siguientes: las filas nuevas van a
 ser pocas y el archivo preserva lo escrito.
 
 Es idempotente y preserva las columnas manuales, incluidas las que
-inventes. La clave es compuesta `(carrera_trabajando, nivel_condicion)`,
+inventes. La clave es compuesta `(entrada_trabajando, nivel_condicion)`,
 así que un caso 1:N se resuelve duplicando la fila y poniendo
 `universitaria` en una y `tecnica` en la otra. Verificado.
 
@@ -1323,7 +1345,7 @@ Escribe `<datos>/coocurrencia_programas.html`, un archivo autocontenido
 que se abre con doble clic: sin terminal, sin servidor, sin internet, y
 queda en Drive.
 
-**La unidad es el programa propio, no `carrera_trabajando`** (18 agosto
+**La unidad es el programa propio, no `entrada_trabajando`** (18 agosto
 2026). Cuando la unidad era el nombre del aviso, la página servía para
 decidir la homologación —a qué familia pertenece un nombre— y ese
 trabajo ya está hecho. Con el programa como unidad, `Ingeniería en
@@ -1360,7 +1382,7 @@ poder volver atrás. Plegar en la lectura se deshace sacando una línea.
 Cada programa trae dos rankings:
 
 1. **con qué otros programas se pide** en el mismo aviso;
-2. **qué nombres de `carrera_trabajando` se homologaron ahí**, con
+2. **qué entradas de trabajando se homologaron ahí**, con
    cuántos avisos aportó cada uno.
 
 El segundo existe para no perder de vista de dónde sale cada número:
@@ -1385,7 +1407,7 @@ El diseño acordado, ya implementado en el archivo:
 
 ```
 homologacion_carreras.csv
-  carrera_trabajando      texto exacto (no hay ID)
+  entrada_trabajando      texto exacto (no hay ID)
   nivel_condicion         * | universitaria | tecnica
   carrera_sies
   area_sies

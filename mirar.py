@@ -3,7 +3,7 @@ Qué hay detrás de un nombre de carrera
 =======================================
 
 Herramienta de consulta para la homologación. Dado un nombre de
-`carrera_trabajando`, muestra los avisos que lo declaran: qué cargos
+`entrada_trabajando`, muestra los avisos que lo declaran: qué cargos
 son, quién los publica, con qué nivel académico y —lo más útil— **con
 qué otras carreras aparece declarado**.
 
@@ -78,7 +78,7 @@ def tabla(titulo, conteo, total, n, nota=''):
 
 
 def main(dir_maestras, nombre, buscar, n):
-    ac = leer(os.path.join(dir_maestras, 'aviso_carrera.csv'))
+    ac = leer(os.path.join(dir_maestras, 'aviso_entrada.csv'))
     decl = [f for f in ac if f.get('fuente') == 'declarada']
 
     # ── modo búsqueda ──────────────────────────────────────────────
@@ -86,9 +86,9 @@ def main(dir_maestras, nombre, buscar, n):
         k = normalizar(buscar)
         cnt = Counter()
         for f in decl:
-            nm = f.get('carrera_trabajando') or ''
+            nm = f.get('entrada_trabajando') or ''
             if k in normalizar(nm):
-                if entero(f.get('n_carreras_declaradas_aviso')) <= UMBRAL:
+                if entero(f.get('n_entradas_declaradas_aviso')) <= UMBRAL:
                     cnt[nm] += 1
                 else:
                     cnt.setdefault(nm, 0)
@@ -104,11 +104,11 @@ def main(dir_maestras, nombre, buscar, n):
 
     # ── resolver el nombre pedido ──────────────────────────────────
     objetivo = normalizar(nombre)
-    exactos = {f['carrera_trabajando'] for f in decl
-               if normalizar(f.get('carrera_trabajando')) == objetivo}
+    exactos = {f['entrada_trabajando'] for f in decl
+               if normalizar(f.get('entrada_trabajando')) == objetivo}
     if not exactos:
-        cerca = sorted({f['carrera_trabajando'] for f in decl
-                        if objetivo in normalizar(f.get('carrera_trabajando'))})
+        cerca = sorted({f['entrada_trabajando'] for f in decl
+                        if objetivo in normalizar(f.get('entrada_trabajando'))})
         print(f"\n  No hay ninguna carrera declarada que se llame "
               f"exactamente «{nombre}».")
         if cerca:
@@ -120,10 +120,10 @@ def main(dir_maestras, nombre, buscar, n):
         return
 
     ids_todos = {f['aviso_id'] for f in decl
-                 if normalizar(f.get('carrera_trabajando')) == objetivo}
+                 if normalizar(f.get('entrada_trabajando')) == objetivo}
     ids_esp = {f['aviso_id'] for f in decl
-               if normalizar(f.get('carrera_trabajando')) == objetivo
-               and entero(f.get('n_carreras_declaradas_aviso')) <= UMBRAL}
+               if normalizar(f.get('entrada_trabajando')) == objetivo
+               and entero(f.get('n_entradas_declaradas_aviso')) <= UMBRAL}
 
     print("=" * 68)
     print(f"  {' / '.join(sorted(exactos))}")
@@ -142,7 +142,7 @@ def main(dir_maestras, nombre, buscar, n):
     co = Counter()
     for f in decl:
         if f['aviso_id'] in ids_esp:
-            otra = f.get('carrera_trabajando') or ''
+            otra = f.get('entrada_trabajando') or ''
             if normalizar(otra) != objetivo:
                 co[otra] += 1
     tabla("CARRERAS CO-DECLARADAS — con qué la piden junto",

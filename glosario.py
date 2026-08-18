@@ -7,7 +7,7 @@ lee los datos reales, los cruza con este archivo y emite DICCIONARIO.md
 marcando qué está descrito, qué no, y qué sobra.
 
 POR QUÉ UN MÓDULO DE PYTHON Y NO UN CSV
-  La homologación de carreras es un CSV porque son 528 filas de trabajo
+  La homologación es un CSV porque son 527 filas de trabajo
   repetitivo que se hace mejor en una planilla. Esto es lo contrario:
   prosa, de pocas líneas por entrada, que se escribe una vez y se lee
   en el editor al lado del código que produce la columna. Un CSV con
@@ -30,8 +30,8 @@ QUÉ PONER
 # sección del documento.
 TABLAS = {
     'avisos.csv': ('1 fila por aviso', 'aviso_id'),
-    'aviso_carrera.csv': ('1 fila por (aviso × carrera declarada)',
-                          'aviso_id + carrera_trabajando'),
+    'aviso_entrada.csv': ('1 fila por (aviso × entrada declarada)',
+                          'aviso_id + entrada_trabajando'),
     'aviso_termino.csv': ('1 fila por (aviso × término de búsqueda)',
                           'aviso_id + termino_busqueda'),
     'aviso_habilidad.csv': ('1 fila por (aviso × habilidad)',
@@ -41,19 +41,19 @@ TABLAS = {
     'aviso_programa.csv': ('1 fila por (aviso × programa o campo ISCED)',
                            'aviso_id + programa_propio | isced'),
     'empresas.csv': ('1 fila por empresa', 'empresa_id'),
-    'carreras_trabajando.csv': ('1 fila por nombre de carrera observado',
-                                'carrera_trabajando'),
+    'entradas_trabajando.csv': ('1 fila por entrada observada',
+                                'entrada_trabajando'),
     'instituciones.csv': ('1 fila por institución', 'id_institucion'),
     'homologacion_carreras.csv': (
-        '1 fila por (nombre de carrera × nivel)',
-        'carrera_trabajando + nivel_condicion'),
+        '1 fila por (entrada × nivel)',
+        'entrada_trabajando + nivel_condicion'),
 }
 
 # Tablas que admiten columnas manuales: cualquier columna que no esté en
 # el esquema del código se preserva por clave entre corridas. En estas,
 # una columna "manual" es una función, no una anomalía.
 CON_COLUMNAS_MANUALES = {
-    'empresas.csv', 'carreras_trabajando.csv', 'instituciones.csv',
+    'empresas.csv', 'entradas_trabajando.csv', 'instituciones.csv',
     'homologacion_carreras.csv',
 }
 
@@ -232,8 +232,8 @@ GLOSAS = {
             "**Cómo usarla.** Es lo que el empleador declaró, no el "
             "rango que acepta: un aviso abierto a un contador técnico o "
             "a un contador auditor igual declara un solo nivel, y esa "
-            "apertura se expresa **declarando varias carreras** "
-            "(`aviso_carrera`). Y **no es una escala ordenada**: "
+            "apertura se expresa **declarando varias entradas** "
+            "(`aviso_entrada`). Y **no es una escala ordenada**: "
             "`Postgrado` se superpone con `Magíster` y `Doctorado`, y "
             "`Diplomado` es un curso posterior a un título, no un grado. "
             "No ordenar ni promediar; usarla como categoría.",
@@ -241,15 +241,16 @@ GLOSAS = {
             "`nombreSituacionAcademica` (titulado, egresado, cursando…).",
 
         # ── conteos ──
-        'n_carreras_declaradas':
-            "Cuántas carreras declara el aviso. **Se guarda el entero, "
+        'n_entradas_declaradas':
+            "Cuántas entradas declara el aviso en el campo `carreras` de "
+            "la API. **Se guarda el entero, "
             "no un flag**: el umbral de genericidad se decide en "
             "análisis (`UMBRAL_AVISO_GENERICO`, hoy 30). Diez avisos de "
-            "un mismo empleador declaran 504 carreras y aparecen en "
+            "un mismo empleador declaran las 504 entradas del catálogo y aparecen en "
             "cualquier búsqueda.",
-        'hash_carreras':
-            "Hash (16 hex) del **conjunto** de carreras declaradas, "
-            "normalizado y ordenado: dos avisos con las mismas carreras "
+        'hash_entradas':
+            "Hash (16 hex) del **conjunto** de entradas declaradas, "
+            "normalizado y ordenado: dos avisos con las mismas entradas "
             "en distinto orden comparten hash. **Vacío cuando el aviso "
             "no declara ninguna** — no declarar nada no es compartir un "
             "conjunto, y meterlos todos bajo un mismo hash inventaría el "
@@ -263,9 +264,9 @@ GLOSAS = {
             "legítimo (Universidad Mayor) sale con 1 porque cada "
             "convocatoria trae su propia lista. Hizo falta porque el "
             "tamaño del conjunto **no** separa esos dos casos: hay "
-            "plantillas de 20 carreras y concursos legítimos de 25. "
+            "plantillas de 20 entradas y concursos legítimos de 25. "
             "Se cuenta sobre avisos deduplicados, no sobre "
-            "observaciones. Vacío si `hash_carreras` lo está.",
+            "observaciones. Vacío si `hash_entradas` lo está.",
         'n_habilidades':   "Cuántas habilidades declara el aviso.",
         'n_instituciones': "Cuántas instituciones declara el aviso.",
         'postulaciones':
@@ -289,7 +290,7 @@ GLOSAS = {
             "clasificación del aviso.**",
         'terminos_busqueda':
             "Términos de búsqueda que trajeron este aviso, separados "
-            "por ` | `. **No es atribución de carrera**: el buscador "
+            "por ` | `. **No es atribución de formación**: el buscador "
             "matchea por prefijo sobre el cuerpo del aviso, así que dos "
             "avisos entraron por 'Derecho' vía la frase 'la mano derecha "
             "del gerente'.",
@@ -322,26 +323,26 @@ GLOSAS = {
     },
 
     # ══════════════════════════════════════════════════════════════
-    'aviso_carrera.csv': {
+    'aviso_entrada.csv': {
         'aviso_id': "FK a `avisos.aviso_id`.",
-        'carrera_trabajando':
-            "Nombre de carrera **tal como lo declara el aviso**. La API "
-            "no trae ID de carrera, solo el texto. Vacío en las filas "
+        'entrada_trabajando':
+            "La entrada **tal como la declara el aviso**. La API no trae "
+            "ID, solo el texto. Vacío en las filas "
             "`keyword_only`.",
         'termino_busqueda':
             "Término que encontró el aviso. Solo se llena en las filas "
             "`keyword_only`; en las `declarada` va vacío.",
         'fuente':
-            "`declarada` = el aviso declara esa carrera (**única "
+            "`declarada` = el aviso declara esa entrada (**única "
             "evidencia válida de atribución**). `keyword_only` = solo "
             "quedó registro del término que lo encontró. **Para "
-            "cualquier análisis por carrera hay que filtrar "
+            "cualquier análisis por formación hay que filtrar "
             "`fuente == 'declarada'`.** Cuesta caro —el 40,6% de los "
-            "avisos no declara carreras— y es el precio de no inventar "
+            "avisos no declara ninguna— y es el precio de no inventar "
             "atribución. Las filas `keyword_only` están superseded por "
             "`aviso_termino.csv` y conviene retirarlas.",
-        'n_carreras_declaradas_aviso':
-            "Copia de `avisos.n_carreras_declaradas`, para poder filtrar "
+        'n_entradas_declaradas_aviso':
+            "Copia de `avisos.n_entradas_declaradas`, para poder filtrar "
             "genéricos sin hacer join.",
     },
 
@@ -374,10 +375,10 @@ GLOSAS = {
     'aviso_institucion.csv': {
         'aviso_id':       "FK a `avisos.aviso_id`.",
         'id_institucion': "FK a `instituciones.id_institucion`.",
-        'n_carreras_declaradas_aviso':
-            "Copia de `avisos.n_carreras_declaradas`. **Es un proxy "
+        'n_entradas_declaradas_aviso':
+            "Copia de `avisos.n_entradas_declaradas`. **Es un proxy "
             "imperfecto para filtrar avisos genéricos por institución**: "
-            "un aviso con 19 carreras declaró 35 instituciones y cuenta "
+            "un aviso con 19 entradas declaró 35 instituciones y cuenta "
             "como específico. Hace falta volumen para calibrar un umbral "
             "propio de instituciones.",
     },
@@ -395,7 +396,7 @@ GLOSAS = {
             "—`nivel_formativo`, `solo_ocupacion`, `no_informativo`— "
             "**no producen fila acá**: el aviso no nombró ninguna "
             "formación. Son el 1,4% de las menciones específicas y "
-            "siguen estando en `aviso_carrera.csv`.",
+            "siguen estando en `aviso_entrada.csv`.",
         'programa_propio':
             "Programa del catálogo propio (`programas_propios.csv`, 205 "
             "entradas). **Vacío cuando `tipo_entrada = campo_iscedf`**: "
@@ -421,20 +422,20 @@ GLOSAS = {
             "un campo más grueso: `Ingeniería` a secas queda en `0710` "
             "—*Engineering and engineering trades not further "
             "defined*—, que es el código honesto para «no dijo cuál».",
-        'n_carreras_origen':
-            "Cuántas carreras declaradas del aviso llevaron a esta "
+        'n_entradas_origen':
+            "Cuántas entradas declaradas del aviso llevaron a esta "
             "fila. **Suele ser 1 y a veces más**: un aviso que declara "
             "`Asistente Judicial` y `Técnico Jurídico` pide un solo "
             "programa, no dos, así que es una fila con el contador en "
             "2. Colapsarlas es el punto de la tabla.",
-        'carreras_origen':
+        'entradas_origen':
             "Los nombres que produjeron la fila, separados por ` | `. "
-            "Es trazabilidad: permite volver a `aviso_carrera.csv` y "
+            "Es trazabilidad: permite volver a `aviso_entrada.csv` y "
             "ver qué escribió el empleador.",
         'atribucion_multiple':
-            "**True si alguna carrera de origen abría a varios "
+            "**True si alguna entrada de origen abría a varios "
             "destinos** (`tipo_relacion = multiple` en la "
-            "homologación). Nueve carreras lo hacen: "
+            "homologación). Nueve entradas lo hacen: "
             "`Geomensura / Topografía / Agrimensura` es a la vez dos "
             "ingenierías y un técnico.\n\n"
             "**Estas filas no son demanda independiente**: son varias "
@@ -442,11 +443,11 @@ GLOSAS = {
             "una fuera un programa distinto infla el conteo. Para un "
             "conteo conservador, filtrarlas; para uno amplio, "
             "repartirlas. Lo que no se puede es ignorar la marca.",
-        'n_carreras_declaradas_aviso':
-            "Copia de `avisos.n_carreras_declaradas`, para poder "
+        'n_entradas_declaradas_aviso':
+            "Copia de `avisos.n_entradas_declaradas`, para poder "
             "excluir los avisos genéricos sin volver a `avisos.csv`. "
             "Importa acá más que en ninguna otra tabla: los 10 avisos "
-            "de Bresler declaran 504 carreras y por sí solos generan "
+            "de Bresler declaran 504 entradas y por sí solos generan "
             "más de dos mil filas.",
     },
 
@@ -480,10 +481,10 @@ GLOSAS = {
     },
 
     # ══════════════════════════════════════════════════════════════
-    'carreras_trabajando.csv': {
-        'carrera_trabajando':
-            "Nombre de carrera observado. **Es la clave, y es texto**: "
-            "la API no expone ID de carrera. Lista controlada, no texto "
+    'entradas_trabajando.csv': {
+        'entrada_trabajando':
+            "La entrada observada. **Es la clave, y es texto**: la API no "
+            "expone ningún ID. Lista controlada, no texto "
             "libre (solo 2 colisiones al normalizar sobre 528), pero "
             "tampoco una taxonomía: mezcla niveles y fusiona sinónimos.",
         'n_avisos_acum':
@@ -492,7 +493,7 @@ GLOSAS = {
             "504 carreras suman en todas.",
         'n_avisos_especificos':
             "Avisos que la declaran **excluyendo genéricos** "
-            "(`n_carreras_declaradas <= UMBRAL_AVISO_GENERICO`). **Es el "
+            "(`n_entradas_declaradas <= UMBRAL_AVISO_GENERICO`). **Es el "
             "orden correcto para priorizar la homologación.** En "
             "Humanidades, usar este en vez del acumulado subió la "
             "cobertura del top 50 de 11,7% a 83,3%.",
@@ -516,14 +517,14 @@ GLOSAS = {
         'n_avisos_especificos':
             "Avisos que la declaran excluyendo genéricos. **Usa el "
             "umbral de carreras como proxy y es imperfecto** — ver "
-            "`aviso_institucion.n_carreras_declaradas_aviso`.",
+            "`aviso_institucion.n_entradas_declaradas_aviso`.",
         'primera_vez_visto': "Primera fecha de scraping en que apareció.",
         'ultima_vez_visto':  "Última fecha de scraping en que apareció.",
     },
 
     # ══════════════════════════════════════════════════════════════
     'homologacion_carreras.csv': {
-        'carrera_trabajando':
+        'entrada_trabajando':
             "Nombre observado, texto exacto. Primera mitad de la clave.",
         'nivel_condicion':
             "`*` (vale para cualquier nivel), `universitaria` o "
@@ -540,10 +541,10 @@ GLOSAS = {
             "`sin_equivalencia`. Este último **es una decisión, no un "
             "hueco**: deja registrado que se miró y no hay equivalente.",
         'n_avisos_especificos':
-            "Copia de `carreras_trabajando.n_avisos_especificos`. Ordena "
+            "Copia de `entradas_trabajando.n_avisos_especificos`. Ordena "
             "la cola: 50 filas cubren del 51% al 85% de las menciones.",
-        'n_avisos_acum':    "Copia de `carreras_trabajando.n_avisos_acum`.",
-        'areas_observadas': "Copia de `carreras_trabajando.areas_observadas`.",
+        'n_avisos_acum':    "Copia de `entradas_trabajando.n_avisos_acum`.",
+        'areas_observadas': "Copia de `entradas_trabajando.areas_observadas`.",
         'sugerencia':
             "Nombre SIES más parecido por solapamiento de tokens. **No "
             "es una decisión y nunca se aplica sola.** A 'Ingeniería "

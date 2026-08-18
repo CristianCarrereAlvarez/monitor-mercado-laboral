@@ -2,7 +2,7 @@
 Homologación carreras trabajando → SIES: genera la cola editable
 =================================================================
 
-Convierte la taxonomía observada en `maestras/carreras_trabajando.csv`
+Convierte la taxonomía observada en `maestras/entradas_trabajando.csv`
 en `maestras/homologacion_carreras.csv`, un archivo pensado para que una
 persona lo abra en una planilla y lo complete a mano.
 
@@ -26,7 +26,7 @@ PRESERVA EL TRABAJO MANUAL
   manuales sobreviven. Solo rellena celdas VACÍAS; nunca pisa lo que ya
   escribiste, ni siquiera si el match exacto dice otra cosa.
 
-  La clave es compuesta: (carrera_trabajando, nivel_condicion). Eso
+  La clave es compuesta: (entrada_trabajando, nivel_condicion). Eso
   permite resolver los casos 1:N —"Prevención de Riesgos / Seguridad
   Industrial" es "Ingeniería en" o "Técnico en" según el aviso—
   duplicando la fila y poniendo `universitaria` en una y `tecnica` en la
@@ -57,11 +57,11 @@ except ImportError:
 
 csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
 
-ENTRADA = 'carreras_trabajando.csv'
+ENTRADA = 'entradas_trabajando.csv'
 SALIDA  = 'homologacion_carreras.csv'
 
 # Las que el script controla y reescribe en cada corrida.
-GESTIONADAS = ['carrera_trabajando', 'nivel_condicion',
+GESTIONADAS = ['entrada_trabajando', 'nivel_condicion',
                'n_avisos_especificos', 'n_avisos_acum', 'areas_observadas',
                'sugerencia', 'score']
 
@@ -140,7 +140,7 @@ def main(dir_maestras):
     # Filas previas indexadas por clave compuesta, para preservar.
     previas = {}
     for r in leer_csv(p_out):
-        clave = (r.get('carrera_trabajando', ''),
+        clave = (r.get('entrada_trabajando', ''),
                  r.get('nivel_condicion', '') or '*')
         previas[clave] = r
     extras = [c for r in previas.values() for c in r
@@ -159,7 +159,7 @@ def main(dir_maestras):
     n_auto = n_ya = 0
 
     for obs in observadas:
-        nombre = obs['carrera_trabajando']
+        nombre = obs['entrada_trabajando']
         if not nombre:
             continue
         # Todas las filas previas de este nombre (puede haber varias por
@@ -172,7 +172,7 @@ def main(dir_maestras):
             vistas.add(clave)
 
             fila = {c: prev.get(c, '') for c in COLUMNAS + extras}
-            fila['carrera_trabajando'] = nombre
+            fila['entrada_trabajando'] = nombre
             fila['nivel_condicion'] = nivel
             fila['n_avisos_especificos'] = obs.get('n_avisos_especificos', '')
             fila['n_avisos_acum'] = obs.get('n_avisos_acum', '')
@@ -204,7 +204,7 @@ def main(dir_maestras):
         if clave in vistas:
             continue
         fila = {c: prev.get(c, '') for c in COLUMNAS + extras}
-        fila['carrera_trabajando'], fila['nivel_condicion'] = clave
+        fila['entrada_trabajando'], fila['nivel_condicion'] = clave
         salida.append(fila)
         conservadas += 1
 
@@ -213,7 +213,7 @@ def main(dir_maestras):
             n = int(f.get('n_avisos_especificos') or 0)
         except ValueError:
             n = 0
-        return (bool(f.get('carrera_sies')), -n, f['carrera_trabajando'])
+        return (bool(f.get('carrera_sies')), -n, f['entrada_trabajando'])
 
     salida.sort(key=orden)
 
@@ -246,11 +246,11 @@ def main(dir_maestras):
 
     if pend:
         print(f"\n  TOP 15 PENDIENTES — por acá conviene empezar")
-        print(f"  {'avisos':>7}  {'carrera_trabajando':<44} sugerencia")
+        print(f"  {'avisos':>7}  {'entrada_trabajando':<44} sugerencia")
         for f in pend[:15]:
             s = f.get('sugerencia') or '—'
             sc = f" [{f['score']}]" if f.get('score') else ''
-            print(f"  {esp(f):>7}  {f['carrera_trabajando'][:44]:<44} "
+            print(f"  {esp(f):>7}  {f['entrada_trabajando'][:44]:<44} "
                   f"{s[:32]}{sc}")
 
     print(f"\n  Archivo: {p_out}")
