@@ -70,6 +70,9 @@ Lo que hay en el repo, y nada más:
 | `consolidar.py` | vigente — derivación |
 | `control.py` | chequeos de calidad + panel; lo corre `mensual.sh` solo |
 | `homologar.py` | genera la cola editable de homologación |
+| `validar_homologacion.py` / `validar.sh` | revisa la homologación contra el catálogo propio y ISCED-F |
+| `programas_propios.csv` | catálogo propio: 205 programas, con genérica SIES, niveles e ISCED-F |
+| `isced_f_2013.csv` | ISCED-F 2013 (UNESCO): 138 códigos amplio/estrecho/detallado |
 | `mirar.py` / `mirar.sh` | qué hay detrás de un nombre de carrera; apoya la homologación |
 | `coocurrencia.py` / `coocurrencia.sh` | genera `coocurrencia_carreras.html`: la misma evidencia, para los 528 nombres de una vez |
 | `diccionario.py` | genera `DICCIONARIO.md` desde los datos reales |
@@ -174,6 +177,7 @@ cd ~/monitor-mercado-laboral && git pull --no-edit
 ./mirar.sh --buscar metal                  # qué nombres contienen "metal"
 ./coocurrencia.sh                          # el dashboard HTML de co-ocurrencia
 ./variables.sh                             # la referencia HTML de variables
+./validar.sh                               # revisa la homologación
 ```
 
 `procesar.sh` es para cuando el post-proceso se corre aparte de la
@@ -1070,10 +1074,82 @@ en longitudinal. Hoy hay 42 avisos de baja y las 42 son `cota_superior`;
 ninguna duración medida. Un `./mensual.sh` en septiembre produce las
 primeras `observada`.
 
-**2. Homologación carreras trabajando → SIES.** Es el cuello de botella
-real y **no depende de correr más áreas**. La ruta A (§6) no la
-reemplaza, porque va desde el término buscado y no desde lo que el aviso
-declara.
+**2. Homologación carreras trabajando → catálogo propio.** Es el cuello
+de botella real y **no depende de correr más áreas**. La ruta A (§6) no
+la reemplaza, porque va desde el término buscado y no desde lo que el
+aviso declara.
+
+**Hecha, fuera del repo, en agosto 2026** — y no contra SIES. El autor
+construyó un **catálogo propio de 205 programas formativos**
+(`programas_propios.csv`), cada uno respaldado por su genérica SIES
+cuando existe, por su distribución de niveles en la oferta 2026, y por
+sus tres códigos **ISCED-F 2013** (amplio, estrecho, detallado). Sobre
+él mapeó los 528 nombres: 542 filas, `maestras/homologacion.csv`.
+
+**El hallazgo de diseño es que el mapeo no es «carrera → programa».**
+Un nombre de aviso puede nombrar cinco cosas distintas, y solo una es
+un programa:
+
+| `tipo_entrada` | qué nombra el aviso | carreras | menciones |
+|---|---|---:|---:|
+| `programa_propio` | un programa identificable | 431 | 92,9% |
+| `campo_iscedf` | un campo de estudio, no un programa (`Ingeniería`, `Ingeniería Civil`) | 38 | 5,7% |
+| `nivel_formativo` | solo un nivel, sin disciplina (`MBA`, `Magíster`) | 11 | 0,8% |
+| `solo_ocupacion` | un cargo (`Paramédico`, `Matrón`) | 14 | 0,4% |
+| `no_informativo` | nada (`Otra carrera`, `Intercambio`) | 34 | 0,2% |
+
+Ignorar esa distinción es lo que produce el error clásico: `Ingeniería
+Civil` son **773 menciones**, el nombre más frecuente de todo el corpus,
+y no es una carrera — SIES no tiene «Ingeniería Civil» a secas y el
+aviso no dice cuál. Forzarla a un programa inventa 773 atribuciones.
+Como campo (ISCED 0788) es un dato honesto.
+
+**`no_homologable_carrera` significa** —decisión del autor, 18 agosto—
+que el programa destino es el correcto pero **no tiene genérica SIES que
+lo respalde**: `Teología`, `Oceanografía`, `Quiropraxia`, `Ingeniería
+Civil Hidráulica`. SIES los mete en un cajón (`Otros Profesionales
+de…`), y la marca guarda esa ausencia en vez de esconderla. No es «no se
+pudo homologar».
+
+**`validar_homologacion.py` revisa el archivo, no lo produce.** Separa
+tres cosas: ⛔ lo que rompe el join o el vocabulario, ⚠ lo que necesita
+ojo humano, y el informe de dónde está parado el trabajo.
+
+```bash
+./validar.sh
+./validar.sh --adoptar-nombres-maestra   # y arregla los espacios
+```
+
+Los chequeos que ya encontraron algo real:
+
+- **Espacios en el nombre.** El nombre es la clave del join y **once de
+  los 528 traen espacios de más** (`'Música '`, `'Servicios  Posventa
+  Área Automotriz'`). Tres diferían en un espacio entre la homologación
+  y la maestra: 33 menciones que un join exacto pierde **sin avisar**.
+  Lección 10. La maestra manda —es lo que `consolidar.py` escribe desde
+  el crudo—, y `--adoptar-nombres-maestra` reescribe solo esos nombres.
+- **Desajuste de nivel.** El nombre del aviso suele declarar el nivel
+  («Técnico en…», «Ingeniería de Ejecución en…») y el programa destino
+  declara en qué niveles se imparte. Cuando se contradicen, uno de los
+  dos está mal: 10 filas, 187 menciones, la mayor
+  `Ingeniería de Ejecución en Mecánica Automotriz` (130) apuntando a un
+  programa **técnico**. Nueve se corrigieron.
+- **Coherencia `tipo_entrada` ↔ destino**, destinos que existen en el
+  catálogo y en ISCED-F, `multiple` contra el número de filas.
+
+La heurística de nivel se ancla al **comienzo** del nombre a propósito:
+buscando la palabra en cualquier posición, «Dibujo de Proyectos de
+Arquitectura e Ingeniería» daba falso positivo.
+
+**Lo que queda es la cola de revisión: 266 carreras, 19,2% de las
+menciones.** El archivo trae `estado` (`validado`/`propuesto`) y
+`confianza`, y el validador la ordena por volumen, que es la prioridad
+correcta.
+
+Lo de abajo es el andamio **anterior**, contra las genéricas SIES.
+Quedó superado por el catálogo propio —que es más fino y trae ISCED—,
+pero se conserva porque `homologar.py` sigue siendo lo que detecta
+nombres nuevos cuando llegue la corrida de septiembre.
 
 **El andamio ya existe y ya corrió** (agosto 2026): `homologar.py`
 genera `maestras/homologacion_carreras.csv` a partir de la taxonomía

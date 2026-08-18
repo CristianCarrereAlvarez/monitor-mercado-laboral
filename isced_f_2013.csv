@@ -1,0 +1,139 @@
+codigo,jerarquia,nombre
+00,amplio,Generic programmes and qualifications
+001,estrecho,Basic programmes and qualifications
+0011,detallado,Basic programmes and qualifications
+002,estrecho,Literacy and numeracy
+0021,detallado,Literacy and numeracy
+003,estrecho,Personal skills and development
+0031,detallado,Personal skills and development
+01,amplio,Education
+011,estrecho,Education
+0110,detallado,Education not further defined
+0111,detallado,Education science
+0112,detallado,Training for pre-school teachers
+0113,detallado,Teacher training without subject specialisation
+0114,detallado,Teacher training with subject specialisation
+02,amplio,Arts and humanities
+021,estrecho,Arts
+0211,detallado,Audio-visual techniques and media production
+0212,detallado,"Fashion, interior and industrial design"
+0213,detallado,Fine arts
+0214,detallado,Handicrafts
+0215,detallado,Music and performing arts
+0219,detallado,Arts not elsewhere classified
+022,estrecho,Humanities (except languages)
+0220,detallado,Humanities (except languages) not further defined
+0221,detallado,Religion and theology
+0222,detallado,History and archaeology
+0223,detallado,Philosophy and ethics
+023,estrecho,Languages
+0231,detallado,Language acquisition
+0232,detallado,Literature and linguistics
+0288,detallado,Inter-disciplinary programmes involving arts and humanities
+03,amplio,"Social sciences, journalism and information"
+031,estrecho,Social and behavioural sciences
+0311,detallado,Economics
+0312,detallado,Political sciences and civics
+0313,detallado,Psychology
+0314,detallado,Sociology and cultural studies
+0319,detallado,Social and behavioural sciences n.e.c.
+032,estrecho,Journalism and information
+0321,detallado,Journalism and reporting
+0322,detallado,"Library, information and archival studies"
+0388,detallado,"Inter-disciplinary programmes involving social sciences, journalism and information"
+04,amplio,"Business, administration and law"
+041,estrecho,Business and administration
+0411,detallado,Accounting and taxation
+0412,detallado,"Finance, banking and insurance"
+0413,detallado,Management and administration
+0414,detallado,Marketing and advertising
+0415,detallado,Secretarial and office work
+0416,detallado,Wholesale and retail sales
+0417,detallado,Work skills
+0419,detallado,Business and administration n.e.c.
+042,estrecho,Law
+0421,detallado,Law
+0488,detallado,"Inter-disciplinary programmes involving business, administration and law"
+05,amplio,"Natural sciences, mathematics and statistics"
+051,estrecho,Biological and related sciences
+0511,detallado,Biology
+0512,detallado,Biochemistry
+052,estrecho,Environment
+0521,detallado,Environmental sciences
+0522,detallado,Natural environments and wildlife
+053,estrecho,Physical sciences
+0531,detallado,Chemistry
+0532,detallado,Earth sciences
+0533,detallado,Physics
+054,estrecho,Mathematics and statistics
+0541,detallado,Mathematics
+0542,detallado,Statistics
+0588,detallado,"Inter-disciplinary programmes involving natural sciences, mathematics and statistics"
+06,amplio,Information and Communication Technologies (ICTs)
+061,estrecho,Information and Communication Technologies (ICTs)
+0611,detallado,Computer use
+0612,detallado,Database and network design and administration
+0613,detallado,Software and applications development and analysis
+07,amplio,"Engineering, manufacturing and construction"
+071,estrecho,Engineering and engineering trades
+0710,detallado,Engineering and engineering trades not further defined
+0711,detallado,Chemical engineering and processes
+0712,detallado,Environmental protection technology
+0713,detallado,Electricity and energy
+0714,detallado,Electronics and automation
+0715,detallado,Mechanics and metal trades
+0716,detallado,"Motor vehicles, ships and aircraft"
+0719,detallado,Engineering and engineering trades n.e.c.
+072,estrecho,Manufacturing and processing
+0721,detallado,Food processing
+0722,detallado,"Materials (glass, paper, plastic and wood)"
+0723,detallado,"Textiles (clothes, footwear and leather)"
+0724,detallado,Mining and extraction
+073,estrecho,Architecture and construction
+0731,detallado,Architecture and town planning
+0732,detallado,Building and civil engineering
+0788,detallado,"Inter-disciplinary programmes involving engineering, manufacturing and construction"
+08,amplio,"Agriculture, forestry, fisheries and veterinary"
+081,estrecho,Agriculture
+0810,detallado,Agriculture not further defined
+0811,detallado,Crop and livestock production
+0812,detallado,Horticulture
+082,estrecho,Forestry
+0821,detallado,Forestry
+083,estrecho,Fisheries
+0831,detallado,Fisheries
+084,estrecho,Veterinary
+0841,detallado,Veterinary
+0888,detallado,"Inter-disciplinary programmes involving agriculture, forestry, fisheries and veterinary"
+09,amplio,Health and welfare
+091,estrecho,Health
+0911,detallado,Dental studies
+0912,detallado,Medicine
+0913,detallado,Nursing and midwifery
+0914,detallado,Medical diagnostic and treatment technology
+0915,detallado,Therapy and rehabilitation
+0916,detallado,Pharmacy
+0917,detallado,Traditional and complementary medicine and therapy
+0919,detallado,Health not elsewhere classified
+092,estrecho,Welfare
+0921,detallado,Care of the elderly and of disabled adults
+0922,detallado,Child care and youth services
+0923,detallado,Social work and counselling
+0988,detallado,Inter-disciplinary programmes involving health and welfare
+10,amplio,Services
+101,estrecho,Personal services
+1011,detallado,Domestic services
+1012,detallado,Hair and beauty services
+1013,detallado,"Hotel, restaurants and catering"
+1014,detallado,Sports
+1015,detallado,"Travel, tourism and leisure"
+1019,detallado,Personal services n.e.c.
+102,estrecho,Hygiene and occupational health services
+1021,detallado,Community sanitation
+1022,detallado,Occupational health and safety
+103,estrecho,Security services
+1031,detallado,Military and defence
+1032,detallado,Protection of persons and property
+104,estrecho,Transport services
+1041,detallado,Transport services
+1088,detallado,Inter-disciplinary programmes involving services
