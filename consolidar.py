@@ -982,10 +982,19 @@ def main(dir_crudo, dir_maestras):
             print(f"        ... y {len(sin_map) - 10} más")
         print(f"    Recordá: sobre-atribuye. Es contexto, no clasificación.")
 
-    print(f"\n  Siguiente: completar la homologación a mano en "
-          f"{M('carreras_trabajando.csv')}")
-    print(f"  (agregar columnas carrera_sies / tipo_relacion / revisado_por;")
-    print(f"   sobreviven a las corridas siguientes)")
+    # El pie decía "completá la homologación en carreras_trabajando.csv
+    # agregando carrera_sies…", que es la ruta contra las genéricas SIES
+    # y quedó superada por el catálogo propio. Mandaba a hacer un trabajo
+    # que ya está hecho, en el archivo equivocado.
+    if n_ap:
+        print(f"\n  Siguiente: ./validar.sh  —  revisa la homologación y "
+              f"mide la cobertura del join")
+    else:
+        print(f"\n  Siguiente: poner la homologación en "
+              f"{M('homologacion.csv')}")
+        print(f"  Sin ella no se escribe aviso_programa.csv, que es donde "
+              f"el aviso")
+        print(f"  llega al programa formativo y al campo ISCED.")
     print(f"{'='*64}\n")
 
 
