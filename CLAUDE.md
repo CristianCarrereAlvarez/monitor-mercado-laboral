@@ -871,6 +871,7 @@ correr las veces que sea.
 | `aviso_termino.csv` | aviso × término de búsqueda | compuesta |
 | `aviso_habilidad.csv` | aviso × habilidad | compuesta |
 | `aviso_institucion.csv` | aviso × institución | compuesta |
+| `aviso_programa.csv` | aviso × programa propio o campo ISCED | compuesta |
 | `empresas.csv` | 1 fila por empresa | `empresa_id` |
 | `carreras_trabajando.csv` | 1 fila por nombre | `carrera_trabajando` |
 | `instituciones.csv` | 1 fila por institución | `id_institucion` |
@@ -978,17 +979,23 @@ H.destinos('Música  ')     # cruza igual que 'Música' o 'Música '
 H.programas('Ingeniería')  # []  — es un campo, no tiene programa
 ```
 
-**`clave()` normaliza solo espacios**, y eso está medido:
+**`clave()` normaliza espacios y mayúsculas**, y las tildes **no**:
 
 ```
-solo espacios            528 nombres → 528 claves, 0 colisiones
-+ minúsculas + tildes    528 nombres → 527 claves, 1 colisión
+espacios                528 nombres → 528 claves, 0 colisiones
+espacios + minúsculas   528 nombres → 527 claves, 1 colisión
 ```
 
-La colisión es `Ingeniería Civil en Minas` / `Ingeniería civil en
-minas`, que son **dos filas** de la homologación. Plegarlas rompería la
-clave. Normalizar de menos deja pasar un error posible; normalizar de
-más crea uno seguro.
+La única colisión es `Ingeniería Civil en Minas` / `Ingeniería civil en
+minas` — la misma carrera escrita distinto, con destino, `tipo_relacion`,
+`estado` y `confianza` idénticos. Se fundieron en una fila (111
+menciones). Las tildes se conservan porque en castellano distinguen
+palabras y ninguna colisión justificaba sacarlas.
+
+Que dos grafías caigan en la misma clave con **destinos distintos** sí
+sería un error: la clave dejaría de identificar una fila y `destinos()`
+devolvería dos donde no hay un `multiple`. El validador lo marca ⛔ y
+dice si el destino es el mismo (fundir) o no (decidir).
 
 **`destinos()` devuelve una lista, no un valor.** Nueve carreras abren a
 varios programas (`tipo_relacion = multiple`). Devolver el primero y
@@ -1004,6 +1011,45 @@ error que la homologación existe para evitar.
 92,9% llega a un programa, 7,1% está homologado sin programa, y lo que
 quede sin fila de homologación sale como ⛔ — esas menciones sí se
 pierden.
+
+### `aviso_programa.csv` — dónde aterriza la homologación
+
+Una tabla nueva, no una columna en las existentes. El grano cambia en
+las dos direcciones —una carrera puede abrir a varios programas y dos
+carreras pueden cerrar en uno—, así que colgarla de `aviso_carrera.csv`
+obligaría a meter listas dentro de una celda, que es justo lo que §5.7
+critica de v7.
+
+**Grano: 1 fila por (aviso × destino).** Si un aviso declara
+`Asistente Judicial` y `Técnico Jurídico`, pide **un** programa, no dos:
+es una fila con `n_carreras_origen = 2`. Colapsar eso es el punto de la
+tabla.
+
+**Qué entra y qué no.** Solo `fuente == 'declarada'` —las filas
+`keyword_only` son trazabilidad del término, no atribución (§5.6)— y
+solo los destinos que existen. `nivel_formativo`, `solo_ocupacion` y
+`no_informativo` **no producen fila**: el aviso no nombró ninguna
+formación. Es el 1,4% de las menciones y siguen en `aviso_carrera.csv`.
+
+**Los campos ISCED sí entran**, con `programa_propio` vacío. Dejarlos
+afuera haría que un conteo por campo —el uso natural de la tabla— se
+comiera el 5,7% de las menciones sin avisar. `tipo_entrada` separa los
+dos casos en un predicado. Y las tres columnas ISCED están en **todas**
+las filas, vengan de un programa o de un campo.
+
+**`atribucion_multiple` es la marca que hay que mirar.** True cuando la
+carrera de origen abría a varios destinos: el aviso nombró algo ambiguo
+y esta fila es una de varias lecturas. Sumarlas como demanda
+independiente infla el conteo. Lección 7.
+
+Primera medición, sobre Derecho (342 avisos): 5.589 filas de
+`aviso_carrera` → **2.534 de `aviso_programa`**, de las cuales 324
+vienen de avisos específicos. En esas 324, 54 colapsan dos o más
+carreras en un programa y 6 llevan `atribucion_multiple`.
+
+La tabla se escribe solo si existe `maestras/homologacion.csv`. Si no
+está, `consolidar.py` avisa en pantalla y sigue — import blando, como la
+ruta A. Nunca falla en silencio.
 
 ### Filtros de genericidad
 

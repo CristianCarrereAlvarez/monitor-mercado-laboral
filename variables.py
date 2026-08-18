@@ -2,7 +2,7 @@
 Las variables de las maestras, en una página
 =============================================
 
-Genera un HTML con las columnas de las nueve tablas maestras y qué es
+Genera un HTML con las columnas de las tablas maestras y qué es
 cada una. Se abre con doble clic y queda en Drive: sin terminal y sin
 servidor. Lo único que pide a la red son las tipografías (Google Fonts);
 sin conexión cae a las del sistema y se lee igual.
@@ -46,6 +46,7 @@ try:
         'aviso_termino.csv':       C.COLS_AVISO_TERMINO,
         'aviso_habilidad.csv':     C.COLS_AVISO_HABILIDAD,
         'aviso_institucion.csv':   C.COLS_AVISO_INSTITUCION,
+        'aviso_programa.csv':      C.COLS_AVISO_PROGRAMA,
         'empresas.csv':            C.COLS_EMPRESAS,
         'carreras_trabajando.csv': C.COLS_CARRERAS,
         'instituciones.csv':       C.COLS_INSTITUCIONES,
@@ -86,6 +87,9 @@ CAUTELA = {
         'n_terminos_sin_mapeo', 'hash_carreras', 'n_avisos_mismo_conjunto'},
     'aviso_carrera.csv': {'fuente'},
     'aviso_institucion.csv': {'n_carreras_declaradas_aviso'},
+    'aviso_programa.csv': {'tipo_entrada', 'programa_propio',
+                           'atribucion_multiple', 'n_carreras_origen',
+                           'n_carreras_declaradas_aviso'},
     'empresas.csv': {'nombre_canonico'},
     'carreras_trabajando.csv': {'carrera_trabajando', 'n_avisos_acum',
                                 'n_avisos_especificos'},

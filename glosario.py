@@ -38,6 +38,8 @@ TABLAS = {
                             'aviso_id + habilidad'),
     'aviso_institucion.csv': ('1 fila por (aviso × institución)',
                               'aviso_id + id_institucion'),
+    'aviso_programa.csv': ('1 fila por (aviso × programa o campo ISCED)',
+                           'aviso_id + programa_propio | isced'),
     'empresas.csv': ('1 fila por empresa', 'empresa_id'),
     'carreras_trabajando.csv': ('1 fila por nombre de carrera observado',
                                 'carrera_trabajando'),
@@ -378,6 +380,74 @@ GLOSAS = {
             "un aviso con 19 carreras declaró 35 instituciones y cuenta "
             "como específico. Hace falta volumen para calibrar un umbral "
             "propio de instituciones.",
+    },
+
+    # ══════════════════════════════════════════════════════════════
+    'aviso_programa.csv': {
+        'aviso_id': "FK a `avisos.aviso_id`.",
+        'tipo_entrada':
+            "**Qué clase de cosa nombró el aviso**, según la "
+            "homologación. Acá toma dos valores: `programa_propio` "
+            "(nombró un programa identificable) y `campo_iscedf` "
+            "(nombró un campo de estudio, como `Ingeniería` o "
+            "`Ingeniería Civil`, que no es una carrera).\n\n"
+            "Los otros tres valores de la homologación "
+            "—`nivel_formativo`, `solo_ocupacion`, `no_informativo`— "
+            "**no producen fila acá**: el aviso no nombró ninguna "
+            "formación. Son el 1,4% de las menciones específicas y "
+            "siguen estando en `aviso_carrera.csv`.",
+        'programa_propio':
+            "Programa del catálogo propio (`programas_propios.csv`, 205 "
+            "entradas). **Vacío cuando `tipo_entrada = campo_iscedf`**: "
+            "el aviso nombró un campo y no hay programa que asignar. "
+            "Llenarlo igual sería inventar la atribución que la "
+            "homologación existe para evitar — `Ingeniería Civil` son "
+            "773 menciones y SIES no tiene esa carrera.",
+        'area_sies':
+            "Área del conocimiento SIES del programa (10 valores). "
+            "Vacía en las filas de campo. **No es `areas_scraping`**, "
+            "que dice en qué búsqueda apareció el aviso, ni "
+            "`nombreArea` de la API, que describe al empleador (§5.8).",
+        'isced_amplio_cod':
+            "Campo amplio ISCED-F 2013 (11 valores: `01` Education … "
+            "`10` Services). Está en **todas** las filas, vengan de un "
+            "programa o de un campo: es la variable con la que se "
+            "compara contra estadísticas internacionales.",
+        'isced_estrecho_cod':
+            "Campo estrecho ISCED-F 2013 (29 valores). Vacío solo si el "
+            "aviso nombró un campo al nivel amplio.",
+        'isced_detallado_cod':
+            "Campo detallado ISCED-F 2013. Vacío cuando el aviso nombró "
+            "un campo más grueso: `Ingeniería` a secas queda en `0710` "
+            "—*Engineering and engineering trades not further "
+            "defined*—, que es el código honesto para «no dijo cuál».",
+        'n_carreras_origen':
+            "Cuántas carreras declaradas del aviso llevaron a esta "
+            "fila. **Suele ser 1 y a veces más**: un aviso que declara "
+            "`Asistente Judicial` y `Técnico Jurídico` pide un solo "
+            "programa, no dos, así que es una fila con el contador en "
+            "2. Colapsarlas es el punto de la tabla.",
+        'carreras_origen':
+            "Los nombres que produjeron la fila, separados por ` | `. "
+            "Es trazabilidad: permite volver a `aviso_carrera.csv` y "
+            "ver qué escribió el empleador.",
+        'atribucion_multiple':
+            "**True si alguna carrera de origen abría a varios "
+            "destinos** (`tipo_relacion = multiple` en la "
+            "homologación). Nueve carreras lo hacen: "
+            "`Geomensura / Topografía / Agrimensura` es a la vez dos "
+            "ingenierías y un técnico.\n\n"
+            "**Estas filas no son demanda independiente**: son varias "
+            "lecturas de un mismo nombre ambiguo. Sumarlas como si cada "
+            "una fuera un programa distinto infla el conteo. Para un "
+            "conteo conservador, filtrarlas; para uno amplio, "
+            "repartirlas. Lo que no se puede es ignorar la marca.",
+        'n_carreras_declaradas_aviso':
+            "Copia de `avisos.n_carreras_declaradas`, para poder "
+            "excluir los avisos genéricos sin volver a `avisos.csv`. "
+            "Importa acá más que en ninguna otra tabla: los 10 avisos "
+            "de Bresler declaran 504 carreras y por sí solos generan "
+            "más de dos mil filas.",
     },
 
     # ══════════════════════════════════════════════════════════════

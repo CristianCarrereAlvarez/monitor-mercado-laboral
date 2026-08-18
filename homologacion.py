@@ -20,17 +20,24 @@ POR QUÉ ES UN MÓDULO Y NO UNA LÍNEA EN CADA SCRIPT
   aunque los espacios difieran.
 
 QUÉ NORMALIZA, Y QUÉ NO
-  **Solo espacios**: recorta las puntas y colapsa las corridas
-  internas. No baja a minúsculas ni saca tildes, a propósito y medido:
+  **Espacios y mayúsculas.** Recorta las puntas, colapsa las corridas
+  internas y baja a minúsculas. **Las tildes se conservan**: en
+  castellano distinguen palabras, y sacarlas es normalizar de más sin
+  ninguna colisión que lo justifique.
 
-      solo espacios              528 nombres → 528 claves, 0 colisiones
-      + minúsculas + tildes      528 nombres → 527 claves, 1 colisión
+      espacios                528 nombres → 528 claves, 0 colisiones
+      espacios + minúsculas   528 nombres → 527 claves, 1 colisión
 
-  La colisión es `Ingeniería Civil en Minas` / `Ingeniería civil en
-  minas`, que en la homologación son **dos filas** —van al mismo
-  programa, pero son dos entradas de la lista de trabajando—. Plegarlas
-  rompería la clave. Normalizar de menos deja pasar un error posible;
-  normalizar de más crea uno seguro.
+  La única colisión es `Ingeniería Civil en Minas` / `Ingeniería civil
+  en minas`: dos entradas de la lista de trabajando que son **la misma
+  carrera escrita distinto**, con destino, tipo_relacion, estado y
+  confianza idénticos. Plegarlas es lo correcto, y por eso la
+  homologación las trae fundidas en una sola fila.
+
+  Que dos nombres caigan en la misma clave con **destinos distintos**
+  sí sería un error, y el validador lo marca ⛔: la clave dejaría de
+  identificar una fila y `destinos()` devolvería dos filas donde no hay
+  un `multiple`.
 
 USO
     from homologacion import Homologacion
@@ -51,12 +58,12 @@ csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
 
 
 def clave(nombre):
-    """La clave del join: el nombre sin espacios de más.
+    """La clave del join: el nombre sin espacios de más ni mayúsculas.
 
-    Recorta las puntas y colapsa las corridas internas. Nada más — ver
-    el encabezado del módulo para por qué no baja a minúsculas.
+    Recorta las puntas, colapsa las corridas internas y baja a
+    minúsculas. Las tildes se conservan — ver el encabezado del módulo.
     """
-    return re.sub(r'\s+', ' ', str(nombre or '')).strip()
+    return re.sub(r'\s+', ' ', str(nombre or '')).strip().lower()
 
 
 class Homologacion:
@@ -139,6 +146,7 @@ if __name__ == "__main__":
     # que motiva el módulo.
     assert clave('Música  ') == clave('Música ') == clave('Música')
     assert clave('Servicios  Posventa') == clave('Servicios Posventa')
-    assert clave('Ingeniería Civil en Minas') != clave('Ingeniería civil '
+    assert clave('Ingeniería Civil en Minas') == clave('Ingeniería civil '
                                                        'en minas')
-    print("  clave(): ok — colapsa espacios, no pliega mayúsculas")
+    assert clave('Música') != clave('Musica')   # las tildes se conservan
+    print("  clave(): ok — colapsa espacios y mayúsculas, conserva tildes")

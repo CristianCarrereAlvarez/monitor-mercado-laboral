@@ -53,6 +53,7 @@ try:
         'aviso_termino.csv':     C.COLS_AVISO_TERMINO,
         'aviso_habilidad.csv':   C.COLS_AVISO_HABILIDAD,
         'aviso_institucion.csv': C.COLS_AVISO_INSTITUCION,
+        'aviso_programa.csv':    C.COLS_AVISO_PROGRAMA,
         'empresas.csv':          C.COLS_EMPRESAS,
         'carreras_trabajando.csv': C.COLS_CARRERAS,
         'instituciones.csv':     C.COLS_INSTITUCIONES,
@@ -74,10 +75,11 @@ except ImportError as e:
     sys.exit(1)
 
 # Orden de presentación: las tablas grandes primero, las de apoyo después.
-ORDEN = ['avisos.csv', 'aviso_carrera.csv', 'aviso_termino.csv',
-         'aviso_habilidad.csv', 'aviso_institucion.csv',
-         'empresas.csv', 'carreras_trabajando.csv', 'instituciones.csv',
-         'homologacion_carreras.csv']
+# El orden y la lista salen de `glosario.TABLAS`: una tabla nueva se
+# declara en un solo lugar. Escrita a mano acá, agregar una maestra
+# obligaba a tres ediciones y la tercera se olvidaba — que es cómo
+# `aviso_programa.csv` quedó fuera del diccionario la primera vez.
+ORDEN = list(TABLAS) or ['avisos.csv']
 
 
 def leer_maestra(path):

@@ -25,8 +25,8 @@ POR QUÉ EXISTE
   El otro riesgo es el nombre mismo: es la clave del join y once de los
   528 traen espacios de más. Un cruce por igualdad exacta perdía esas
   carreras **sin avisar** (lección 10). Ya no: el join pasa por
-  `homologacion.clave()`, que colapsa espacios, así que una diferencia
-  de espaciado es cosmética. El script la reporta igual —dos archivos
+  `homologacion.clave()`, que colapsa espacios y mayúsculas, así que
+  una diferencia de espaciado o de caja es cosmética. El script la reporta igual —dos archivos
   que deberían decir lo mismo no lo dicen— pero como ⚠, no como ⛔.
 
   Lo que sí es error es un nombre declarado en los avisos que no tenga
@@ -139,7 +139,7 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
 
     por_carrera = defaultdict(list)
     for r in H:
-        por_carrera[r['carrera_trabajando']].append(r)
+        por_carrera[clave(r['carrera_trabajando'])].append(r)
     total = sum(n(v[0]) for v in por_carrera.values())
 
     print("=" * 68)
@@ -151,12 +151,22 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
           f"ISCED-F: {len(isced)} códigos")
 
     # ── 1. clave y orden ───────────────────────────────────────────
-    dup = [k for k, c in Counter((r['carrera_trabajando'],
+    # La clave es la del join —`homologacion.clave()`—, no el texto
+    # crudo: dos grafías del mismo nombre son la misma fila.
+    dup = [k for k, c in Counter((clave(r['carrera_trabajando']),
                                   r['orden_relacion']) for r in H).items()
            if c > 1]
     for k in dup:
-        inf.error('clave duplicada (carrera_trabajando + orden_relacion)',
-                  f"{k[0]}  orden {k[1]}")
+        variantes = sorted({r['carrera_trabajando'] for r in H
+                            if clave(r['carrera_trabajando']) == k[0]})
+        destinos = {(r['tipo_entrada'], r['programa_propio'], r['isced_cod'])
+                    for r in H if clave(r['carrera_trabajando']) == k[0]
+                    and r['orden_relacion'] == k[1]}
+        que = ('con el MISMO destino: fundilas en una fila'
+               if len(destinos) == 1 else
+               'con destinos DISTINTOS: hay que decidir cuál vale')
+        inf.error('dos grafías del mismo nombre caen en la misma clave '
+                  'de join', f"{variantes}  orden {k[1]} — {que}")
     for k, v in por_carrera.items():
         ordenes = sorted(entero(r['orden_relacion']) for r in v)
         if ordenes != list(range(1, len(v) + 1)):
@@ -218,16 +228,18 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
                       n(v[0]))
 
     # ── 6. el join contra la maestra ───────────────────────────────
-    # El nombre es la clave y once de los 528 traen espacios de más.
+    # El nombre es la clave; once de los 528 traen espacios de más y
+    # uno difiere solo en mayúsculas.
     adoptar = {}
     if f_carr and os.path.exists(f_carr):
         CT = leer(f_carr, 'la maestra de carreras')
         maes = {r['carrera_trabajando'] for r in CT}
-        homs = set(por_carrera)
         idx_m = defaultdict(list)
         for x in maes:
             idx_m[clave(x)].append(x)
-        for x in sorted(homs - maes):
+        maes_k = {clave(x) for x in maes}
+        for x in sorted({v[0]['carrera_trabajando']
+                         for v in por_carrera.values()} - maes):
             iguales = [y for y in idx_m.get(clave(x), []) if y != x]
             if iguales:
                 # El join normaliza espacios (ver homologacion.clave), así
@@ -235,16 +247,15 @@ def main(f_hom, f_prog, f_isced, f_carr, f_ac, tope, adoptar_nombres):
                 # que deberían decir lo mismo no lo dicen, y la próxima
                 # diferencia podría no ser un espacio.
                 adoptar[x] = iguales[0]
-                inf.rev('el nombre difiere en espacios (cosmético: el join '
-                        'los cruza igual)',
+                inf.rev('el nombre difiere en espacios o mayúsculas '
+                        '(cosmético: el join los cruza igual)',
                         f"homologación {x!r}  ≠  maestra {iguales[0]!r}",
-                        n(por_carrera[x][0]))
-            else:
+                        n(por_carrera[clave(x)][0]))
+            elif clave(x) not in maes_k:
                 inf.error('carrera en la homologación que no está en la '
-                          'maestra', repr(x), n(por_carrera[x][0]))
-        idx_h = {clave(x) for x in homs}
-        for x in sorted(maes - homs):
-            if clave(x) not in idx_h:
+                          'maestra', repr(x), n(por_carrera[clave(x)][0]))
+        for x in sorted(maes):
+            if clave(x) not in por_carrera:
                 inf.rev('carrera de la maestra sin fila de homologación',
                         repr(x))
     else:

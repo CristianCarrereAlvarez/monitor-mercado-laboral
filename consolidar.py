@@ -1,7 +1,7 @@
 """
 Consolidación — crudo JSONL → maestras CSV acumuladas
 ======================================================
-Lee todos los crudo_*.jsonl y hace UPSERT sobre ocho tablas.
+Lee todos los crudo_*.jsonl y hace UPSERT sobre nueve tablas.
 Es idempotente y reprocesable: se puede correr las veces que sea, y si
 mañana cambia un criterio de parseo, se vuelve a correr sobre el mismo
 crudo sin tocar la red.
@@ -13,6 +13,7 @@ Tablas (directorio maestras/):
   aviso_termino.csv        1 fila por (aviso × término de búsqueda)
   aviso_habilidad.csv      1 fila por (aviso × habilidad)
   aviso_institucion.csv    1 fila por (aviso × institución)
+  aviso_programa.csv       1 fila por (aviso × programa o campo ISCED)
   empresas.csv             1 fila por empresa_id  ← columnas manuales
   carreras_trabajando.csv  1 fila por nombre      ← columnas manuales
   instituciones.csv        1 fila por id_institucion
@@ -24,10 +25,15 @@ COLUMNAS MANUALES
   carreras_trabajando.csv. Las columnas gestionadas se sobrescriben.
 
 HOMOLOGACIÓN
-  No se hace acá. `carreras_trabajando.csv` acumula la taxonomía
-  observada con su frecuencia, para completarla a mano una vez que estén
-  las 10 áreas. Las carreras NO traen ID en la API, así que la clave es
-  el nombre exacto.
+  No se decide acá: se APLICA. `maestras/homologacion.csv` es trabajo
+  humano —qué programa propio o qué campo ISCED nombra cada una de las
+  528 carreras de trabajando— y este script solo la cuelga de cada
+  aviso, en `aviso_programa.csv`. Si el archivo no está, esa tabla no se
+  escribe y se avisa; el resto de la consolidación no cambia.
+
+  El cruce pasa siempre por `homologacion.clave()`, que colapsa espacios
+  y mayúsculas. Las carreras NO traen ID en la API, así que la clave es
+  el nombre, y el nombre viene con espacios de más en once de los 528.
 
 PANEL / DURACIÓN DE VACANTE
   aviso_id es estable entre corridas. Con dos o más corridas se obtiene:
@@ -47,6 +53,11 @@ import argparse, csv, glob, json, os, re, sys, unicodedata
 from collections import Counter, defaultdict
 from datetime import datetime
 
+# Los catálogos (programas propios, ISCED-F) viven junto al código, no
+# con los datos: cambian cuando cambia el criterio, no cuando llegan
+# avisos nuevos.
+REPO = os.path.dirname(os.path.abspath(__file__))
+
 # Ruta A (término de búsqueda → SIES). Import blando: si el módulo no
 # está, el resto de la consolidación sigue funcionando y las columnas
 # derivadas quedan vacías, pero se avisa en pantalla. No falla en
@@ -57,6 +68,16 @@ try:
 except ImportError:
     TERMINO_A_SIES, TERMINO_A_AREAS = {}, {}
     SIES_DISPONIBLE = False
+
+# El join carrera declarada → programa propio. Mismo import blando: sin
+# el módulo o sin el archivo de homologación, `aviso_programa.csv` no se
+# escribe y se avisa en pantalla.
+try:
+    from homologacion import Homologacion
+    JOIN_DISPONIBLE = True
+except ImportError:
+    Homologacion = None
+    JOIN_DISPONIBLE = False
 
 csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
 
@@ -322,6 +343,13 @@ COLS_AVISO_INSTITUCION = [
     'aviso_id', 'id_institucion', 'n_carreras_declaradas_aviso',
 ]
 
+COLS_AVISO_PROGRAMA = [
+    'aviso_id', 'tipo_entrada', 'programa_propio', 'area_sies',
+    'isced_amplio_cod', 'isced_estrecho_cod', 'isced_detallado_cod',
+    'n_carreras_origen', 'carreras_origen', 'atribucion_multiple',
+    'n_carreras_declaradas_aviso',
+]
+
 COLS_EMPRESAS = [
     'empresa_id', 'empresa_id_alt', 'nombre_canonico', 'nombres_observados',
     'n_avisos_acumulados', 'primera_vez_visto', 'ultima_vez_visto',
@@ -463,6 +491,95 @@ def aplanar(reg):
 # ══════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════
+
+def derivar_aviso_programa(pares_car, ruta_hom, ruta_prog, ruta_isced):
+    """aviso × destino de la homologación, con el campo ISCED colgado.
+
+    GRANO. Una fila por (aviso, destino). Si dos carreras declaradas del
+    mismo aviso caen en el mismo programa, es UNA fila —el aviso pide un
+    programa, no dos— y `n_carreras_origen` guarda que fueron dos.
+
+    QUÉ ENTRA. Solo `fuente == 'declarada'`: las filas `keyword_only`
+    son trazabilidad del término buscado, no atribución de carrera
+    (§5.6). Y solo los destinos que existen: `nivel_formativo`,
+    `solo_ocupacion` y `no_informativo` **no producen fila**, porque el
+    aviso no nombró ninguna formación. Son el 1,4% de las menciones y
+    perderlas acá es correcto; siguen en `aviso_carrera.csv`.
+
+    POR QUÉ INCLUYE LOS CAMPOS ISCED Y NO SOLO LOS PROGRAMAS. Dejar
+    afuera `campo_iscedf` haría que un conteo por campo —el uso natural
+    de esta tabla— se comiera el 5,7% de las menciones sin avisar.
+    `tipo_entrada` separa los dos casos en un predicado.
+
+    `atribucion_multiple` marca las filas que vienen de una carrera que
+    abría a varios destinos: el aviso nombró algo ambiguo y esta fila es
+    una de varias lecturas. Sumarlas como si fueran demanda distinta
+    infla el conteo. Lección 7: la calidad del dato, en el dato.
+    """
+    hom = Homologacion.cargar(ruta_hom, obligatoria=False)
+    if hom is None:
+        return None, f"no está {ruta_hom}"
+    prog = {r['programa_propio']: r for r in leer_csv(ruta_prog)}
+    if not prog:
+        return None, f"no está {ruta_prog}"
+    jerarquia = {r['codigo']: r['jerarquia'] for r in leer_csv(ruta_isced)}
+
+    def codigos_isced(cod):
+        """amplio / estrecho / detallado a partir de un código suelto.
+        La jerarquía ISCED-F es por prefijo: 0713 ⊂ 071 ⊂ 07."""
+        cod = (cod or '').strip()
+        if not cod or cod not in jerarquia:
+            return '', '', ''
+        return (cod[:2],
+                cod[:3] if len(cod) >= 3 else '',
+                cod if len(cod) >= 4 else '')
+
+    filas = {}
+    for par in pares_car.values():
+        if par.get('fuente') != 'declarada':
+            continue
+        nombre = par['carrera_trabajando']
+        destinos = hom.destinos(nombre)
+        for d in destinos:
+            programa = (d.get('programa_propio') or '').strip()
+            campo = (d.get('isced_cod') or '').strip()
+            if programa:
+                p = prog.get(programa)
+                if not p:
+                    continue
+                llave, area = programa, p['area_sies']
+                amplio, estrecho, detallado = (p['isced_amplio_cod'],
+                                               p['isced_estrecho_cod'],
+                                               p['isced_detallado_cod'])
+            elif campo:
+                llave, area = f'isced:{campo}', ''
+                amplio, estrecho, detallado = codigos_isced(campo)
+            else:
+                continue
+
+            f = filas.setdefault((par['aviso_id'], llave), {
+                'aviso_id': par['aviso_id'],
+                'tipo_entrada': d.get('tipo_entrada'),
+                'programa_propio': programa or None,
+                'area_sies': area or None,
+                'isced_amplio_cod': amplio or None,
+                'isced_estrecho_cod': estrecho or None,
+                'isced_detallado_cod': detallado or None,
+                'n_carreras_origen': 0,
+                '_origen': set(),
+                'atribucion_multiple': False,
+                'n_carreras_declaradas_aviso':
+                    par.get('n_carreras_declaradas_aviso'),
+            })
+            f['_origen'].add(nombre)
+            f['atribucion_multiple'] |= len(destinos) > 1
+
+    for f in filas.values():
+        origen = sorted(f.pop('_origen'))
+        f['n_carreras_origen'] = len(origen)
+        f['carreras_origen'] = ' | '.join(origen)
+    return list(filas.values()), None
+
 
 def main(dir_crudo, dir_maestras):
     archivos = sorted(glob.glob(os.path.join(dir_crudo, 'crudo_*.jsonl')))
@@ -735,6 +852,24 @@ def main(dir_crudo, dir_maestras):
     n_ai = escribir_csv_simple(M('aviso_institucion.csv'),
                                list(pares_inst.values()),
                                COLS_AVISO_INSTITUCION)
+    # Homologación: una tabla más, no una columna en las existentes.
+    # El grano cambia —una carrera puede abrir a varios programas y dos
+    # carreras pueden cerrar en uno—, así que colgarla de
+    # aviso_carrera.csv obligaría a listas dentro de una celda.
+    n_ap, aviso_prog = 0, None
+    if JOIN_DISPONIBLE:
+        aviso_prog, falta = derivar_aviso_programa(
+            pares_car, M('homologacion.csv'),
+            os.path.join(REPO, 'programas_propios.csv'),
+            os.path.join(REPO, 'isced_f_2013.csv'))
+        if aviso_prog is None:
+            print(f"\n  ⚠  Sin aviso_programa.csv: {falta}")
+        else:
+            n_ap = escribir_csv_simple(M('aviso_programa.csv'), aviso_prog,
+                                       COLS_AVISO_PROGRAMA)
+    else:
+        print("\n  ⚠  Sin aviso_programa.csv: falta homologacion.py")
+
     n_em, man_em = escribir_csv(M('empresas.csv'), filas_emp,
                                 COLS_EMPRESAS, 'empresa_id')
     n_ca, man_ca = escribir_csv(M('carreras_trabajando.csv'), filas_car,
@@ -764,6 +899,8 @@ def main(dir_crudo, dir_maestras):
     print(f"  aviso_termino.csv       {n_at:7d}")
     print(f"  aviso_habilidad.csv     {n_ah:7d}")
     print(f"  aviso_institucion.csv   {n_ai:7d}")
+    if n_ap:
+        print(f"  aviso_programa.csv      {n_ap:7d}")
     print(f"  empresas.csv            {n_em:7d}   (+{man_em} col. manuales)")
     print(f"  carreras_trabajando.csv {n_ca:7d}   (+{man_ca} col. manuales)")
     print(f"  instituciones.csv       {n_in:7d}   (+{man_in} col. manuales)")
