@@ -1319,14 +1319,30 @@ dispersos en `Ingeniería en Informática / Sistemas`, `Ingeniería en
 Gestión e Informática` y otros: la co-ocurrencia deja de estar partida
 por variantes de redacción y dice algo sobre **formaciones**.
 
-Se filtra por área SIES y por **nivel formativo del programa** — el
-nivel en que el programa *se imparte* según la oferta SIES 2026, que no
-es `avisos.nivel_academico`, el que declara el empleador. El filtro dice
-«se imparte en», no «es»: **76 de los 205 programas se imparten en más
-de un nivel** (`Kinesiología` es profesional, profesional con grado y
-licenciatura a la vez), así que un programa sale en la lista de todos
-sus niveles. El vocabulario y sus glosas viven en `homologacion.py`
-(`NIVELES`), para que no se escriban dos veces.
+Se filtra por tres cosas, y el orden importa: **área SIES** (10
+valores), **campo estrecho ISCED-F** (25 de los 29 en uso) y **nivel
+formativo del programa**.
+
+El campo ISCED estrecho es el filtro fino, y su gracia es que **cruza
+las áreas SIES**: `041 Business and administration` junta `Ingeniería
+Comercial` (Adm. y Comercio), `Administración Pública` (Ciencias
+Sociales) e `Ingeniería Civil Industrial` (Tecnología) — tres áreas, un
+campo. Se eligió el estrecho y no el detallado porque el detallado son
+64 códigos sobre 205 programas, con muchos de uno o dos: un desplegable
+inservible. Los nombres van en inglés, que es como los publica UNESCO.
+
+El nivel es el del **programa**, no `avisos.nivel_academico`, que es lo
+que declara el empleador. Un programa se imparte en más de un nivel en
+76 de 205 casos, así que sale en la lista de todos ellos y los conteos
+por nivel no suman 205.
+
+**`licenciatura` se pliega en `profesional_con_grado`** (decisión del
+autor, 18 agosto 2026: la distinción no le sirve al análisis). El
+pliegue vive en `homologacion.py` —`PLIEGUES`— y **no** en
+`programas_propios.csv`: el catálogo guarda lo que dice la oferta SIES
+2026, que son dos categorías, y reescribirlo borraría un dato real —que
+el 14,9% de los programas de Trabajo Social son licenciatura pura— sin
+poder volver atrás. Plegar en la lectura se deshace sacando una línea.
 
 Cada programa trae dos rankings:
 

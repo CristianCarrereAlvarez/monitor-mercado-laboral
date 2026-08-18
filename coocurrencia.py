@@ -53,10 +53,11 @@ except Exception:
     UMBRAL = 30
 
 try:
-    from homologacion import (Homologacion, clave, NIVELES, ORDEN_NIVELES)
+    from homologacion import (Homologacion, clave, NIVELES, ORDEN_NIVELES,
+                              plegar_nivel)
 except Exception:
     Homologacion, clave = None, lambda s: s
-    NIVELES, ORDEN_NIVELES = {}, []
+    NIVELES, ORDEN_NIVELES, plegar_nivel = {}, [], lambda n: n
 
 REPO = os.path.dirname(os.path.abspath(__file__))
 
@@ -85,17 +86,32 @@ def top(contador, n=None):
 
 def legible_dist(txt):
     """`profesional 30.8% | profesional_con_grado 69.2%` con las glosas
-    en castellano. El CSV guarda las claves del vocabulario; la página
-    la lee una persona."""
-    partes = []
+    en castellano y los niveles plegados.
+
+    El CSV guarda las claves del vocabulario y las dos categorías que
+    distingue SIES; la página la lee una persona y usa el vocabulario
+    plegado. Los porcentajes de dos categorías que se pliegan en una se
+    SUMAN — mostrarlos por separado con la misma etiqueta sería confuso,
+    y quedarse con uno perdería el otro.
+    """
+    acum, orden = {}, []
     for x in (txt or '').split('|'):
         x = x.strip()
         if not x:
             continue
-        clave_niv, _, pct = x.rpartition(' ')
-        partes.append(f"{NIVELES.get(clave_niv, (clave_niv, clave_niv))[1]} "
-                      f"{pct}" if clave_niv else x)
-    return ' · '.join(partes)
+        crudo, _, pct = x.rpartition(' ')
+        if not crudo:
+            continue
+        n = plegar_nivel(crudo)
+        try:
+            v = float(pct.rstrip('%'))
+        except ValueError:
+            continue
+        if n not in acum:
+            orden.append(n)
+        acum[n] = acum.get(n, 0.0) + v
+    return ' · '.join(
+        f"{NIVELES.get(n, (n, n))[1]} {acum[n]:.1f}%" for n in orden)
 
 
 def entero(v, d=0):
@@ -137,6 +153,10 @@ def construir(dir_maestras):
     cat = {r['programa_propio']: r
            for r in leer(os.path.join(REPO, 'programas_propios.csv'),
                          obligatorio=False)}
+    # Nombres de los campos ISCED-F, para etiquetar el filtro estrecho.
+    isced_nom = {r['codigo']: r['nombre']
+                 for r in leer(os.path.join(REPO, 'isced_f_2013.csv'),
+                               obligatorio=False)}
 
     prog_por_aviso = defaultdict(set)   # aviso -> {programa}
     ids = defaultdict(set)             # programa -> {aviso}
@@ -182,12 +202,21 @@ def construir(dir_maestras):
         c = cat.get(p, {})
         # Un programa puede impartirse en varios niveles —76 de 205—, así
         # que esto es una lista y el filtro es "se imparte en", no "es".
-        niveles = [x.strip() for x in c.get('nivel_condicion', '').split('|')
-                   if x.strip()]
+        niveles = []
+        for x in c.get('nivel_condicion', '').split('|'):
+            n = plegar_nivel(x)
+            if n and n not in niveles:
+                niveles.append(n)
+        niveles.sort(key=lambda n: ORDEN_NIVELES.index(n)
+                     if n in ORDEN_NIVELES else 99)
         fichas.append({
             'nombre': p,
             'area': area,
             'isced': isced,
+            'estr': c.get('isced_estrecho_cod', ''),
+            'estr_txt': (c.get('isced_estrecho')
+                         or isced_nom.get(c.get('isced_estrecho_cod', ''), '')
+                         or c.get('isced_estrecho_cod', '')),
             'niv': niveles,
             'niv_txt': ' · '.join(NIVELES.get(n, (n, n))[0] for n in niveles),
             'dist': legible_dist(c.get('dist_niveles_sies', '')),
@@ -279,7 +308,8 @@ summary{cursor:pointer;font-size:13px;color:var(--tenue)}
     <input type="search" id="q"
            placeholder="Buscar programa, o un nombre de aviso homologado ahí…"
            autocomplete="off">
-    <select id="area"><option value="">todas las áreas</option>__AREAS__</select>
+    <select id="area"><option value="">todas las áreas SIES</option>__AREAS__</select>
+    <select id="estr"><option value="">todos los campos ISCED-F</option>__ESTR__</select>
     <select id="nivel"><option value="">todos los niveles</option>__NIVELES__</select>
     <span class="cnt" id="cuenta"></span>
   </div>
@@ -314,12 +344,12 @@ function barras(pares, total){
 function cuerpo(f){
   let h = '';
   if(f.dist){
-    h += `<p class="nota"><b>Se imparte en:</b> ${esc(f.dist)}${
+    h += `<p class="nota"><b>Nivel:</b> ${esc(f.dist)}${
       f.n_sies ? ` — sobre ${esc(f.n_sies)} programas de la oferta SIES
       2026` : ''}. Es el nivel del programa, no el que declara el
       empleador en el aviso.</p>`;
   } else if(f.niv_txt){
-    h += `<p class="nota"><b>Se imparte en:</b> ${esc(f.niv_txt)}. Sin
+    h += `<p class="nota"><b>Nivel:</b> ${esc(f.niv_txt)}. Sin
       distribución: el programa no tiene genérica SIES que lo respalde.
       </p>`;
   }
@@ -353,10 +383,12 @@ function pinta(){
   const q = norm(document.getElementById('q').value.trim());
   const ar = document.getElementById('area').value;
   const nv = document.getElementById('nivel').value;
+  const es = document.getElementById('estr').value;
   // La búsqueda entra también por los nombres de aviso: el usuario
   // suele acordarse de "Analista Programador", no del programa.
   const vis = D.filter(f => {
     if(ar && f.area !== ar) return false;
+    if(es && f.estr !== es) return false;
     // "se imparte en", no "es": 76 de los 205 programas tienen más de
     // un nivel y tienen que salir en la lista de todos ellos.
     if(nv && !f.niv.includes(nv)) return false;
@@ -372,6 +404,7 @@ function pinta(){
        <div class="cab">
          <span class="n">${esc(f.nombre)}</span>
          <span class="tag t-ok">${esc(f.area)}</span>
+         ${f.estr_txt ? `<span class="tag t-niv">${esc(f.estr_txt)}</span>`:''}
          ${f.niv_txt ? `<span class="tag t-niv">${esc(f.niv_txt)}</span>`:''}
          <span class="cnt">${f.esp} avisos · ${f.n_org} nombres</span>
        </div>
@@ -391,6 +424,7 @@ document.addEventListener('click', ev => {
 document.getElementById('q').addEventListener('input', pinta);
 document.getElementById('area').addEventListener('change', pinta);
 document.getElementById('nivel').addEventListener('change', pinta);
+document.getElementById('estr').addEventListener('change', pinta);
 pinta();
 </script></body></html>
 """
@@ -402,6 +436,8 @@ def main(dir_maestras, salida):
     areas = sorted({f['area'] for f in fichas if f['area']})
     niveles = [n for n in ORDEN_NIVELES
                if any(n in f['niv'] for f in fichas)]
+    estrechos = sorted({(f['estr'], f['estr_txt']) for f in fichas
+                        if f['estr']})
     sin_nivel = sum(1 for f in fichas if not f['niv'])
 
     meta = (f"{len(fichas)} programas · {tot_esp} pares aviso×programa · "
@@ -414,9 +450,12 @@ def main(dir_maestras, salida):
               .replace('__META__', meta)
               .replace('__AREAS__', ''.join(
                   f'<option>{html.escape(a)}</option>' for a in areas))
+              .replace('__ESTR__', ''.join(
+                  f'<option value="{html.escape(c)}">{html.escape(c)} · '
+                  f'{html.escape(t)}</option>' for c, t in estrechos))
               .replace('__NIVELES__', ''.join(
-                  f'<option value="{n}">se imparte en: '
-                  f'{html.escape(NIVELES[n][1])}</option>' for n in niveles))
+                  f'<option value="{n}">{html.escape(NIVELES[n][1])}'
+                  f'</option>' for n in niveles))
               .replace('__NSIN__', str(len(sin_avisos)))
               .replace('__SIN__', ''.join(
                   f'<div>{html.escape(p)}</div>' for p in sin_avisos))

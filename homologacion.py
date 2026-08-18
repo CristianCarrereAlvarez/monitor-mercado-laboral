@@ -76,20 +76,36 @@ def clave(nombre):
 # imparten en más de uno.
 NIVELES = {
     'tecnico':               ('TNS',          'Técnico de Nivel Superior'),
-    'profesional':           ('Prof.',        'Profesional sin licenciatura'),
-    'profesional_con_grado': ('Prof. c/lic.', 'Profesional con licenciatura'),
-    'licenciatura':          ('Lic.',
-                              'Licenciatura no conducente a título'),
+    'profesional':           ('Prof. s/grado', 'Profesional sin grado'),
+    'profesional_con_grado': ('Prof. c/grado',
+                              'Profesional con grado'),
     'posgrado_postitulo':    ('Posg.',
                               'Magíster, doctorado, especialidad, '
                               'postítulo o diplomado'),
 }
 
+# `licenciatura` se pliega en `profesional_con_grado` — decisión del
+# autor, 18 agosto 2026: la distinción «licenciatura no conducente a
+# título» no le sirve al análisis.
+#
+# Se pliega ACÁ y no en `programas_propios.csv` a propósito. El catálogo
+# guarda lo que dice la oferta SIES 2026, que son dos categorías
+# distintas; reescribirlo borraría un dato real —que el 14,9% de los
+# programas de Trabajo Social son licenciatura pura— para siempre y sin
+# poder volver atrás. Plegar en la lectura es reversible: se saca esta
+# línea y el dato está.
+PLIEGUES = {'licenciatura': 'profesional_con_grado'}
+
 # Orden de menor a mayor. No es una escala de mérito: es el orden en que
-# se leen en una lista, y `licenciatura` va aparte porque no conduce a
-# título.
+# se leen en una lista.
 ORDEN_NIVELES = ['tecnico', 'profesional', 'profesional_con_grado',
-                 'licenciatura', 'posgrado_postitulo']
+                 'posgrado_postitulo']
+
+
+def plegar_nivel(n):
+    """El nivel tal como se usa en el análisis. Ver PLIEGUES."""
+    n = (n or '').strip()
+    return PLIEGUES.get(n, n)
 
 
 class Homologacion:
