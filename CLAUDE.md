@@ -1319,6 +1319,15 @@ dispersos en `Ingeniería en Informática / Sistemas`, `Ingeniería en
 Gestión e Informática` y otros: la co-ocurrencia deja de estar partida
 por variantes de redacción y dice algo sobre **formaciones**.
 
+Se filtra por área SIES y por **nivel formativo del programa** — el
+nivel en que el programa *se imparte* según la oferta SIES 2026, que no
+es `avisos.nivel_academico`, el que declara el empleador. El filtro dice
+«se imparte en», no «es»: **76 de los 205 programas se imparten en más
+de un nivel** (`Kinesiología` es profesional, profesional con grado y
+licenciatura a la vez), así que un programa sale en la lista de todos
+sus niveles. El vocabulario y sus glosas viven en `homologacion.py`
+(`NIVELES`), para que no se escriban dos veces.
+
 Cada programa trae dos rankings:
 
 1. **con qué otros programas se pide** en el mismo aviso;

@@ -66,6 +66,32 @@ def clave(nombre):
     return re.sub(r'\s+', ' ', str(nombre or '')).strip().lower()
 
 
+# El vocabulario de niveles del catálogo propio, con su glosa. Vive acá
+# porque lo usan la página de co-ocurrencia y cualquier análisis por
+# nivel; escrito dos veces, se desincroniza.
+#
+# OJO: NO es `avisos.nivel_academico`, que es el nivel que el empleador
+# declara en el aviso. Este es el nivel en que el programa **se
+# imparte**, según la oferta SIES 2026, y 76 de los 205 programas se
+# imparten en más de uno.
+NIVELES = {
+    'tecnico':               ('TNS',          'Técnico de Nivel Superior'),
+    'profesional':           ('Prof.',        'Profesional sin licenciatura'),
+    'profesional_con_grado': ('Prof. c/lic.', 'Profesional con licenciatura'),
+    'licenciatura':          ('Lic.',
+                              'Licenciatura no conducente a título'),
+    'posgrado_postitulo':    ('Posg.',
+                              'Magíster, doctorado, especialidad, '
+                              'postítulo o diplomado'),
+}
+
+# Orden de menor a mayor. No es una escala de mérito: es el orden en que
+# se leen en una lista, y `licenciatura` va aparte porque no conduce a
+# título.
+ORDEN_NIVELES = ['tecnico', 'profesional', 'profesional_con_grado',
+                 'licenciatura', 'posgrado_postitulo']
+
+
 class Homologacion:
     """La homologación cargada e indexada por clave de join."""
 
