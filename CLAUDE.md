@@ -83,7 +83,6 @@ Lo que hay en el repo, y nada más:
 | `DICCIONARIO.md` | generado; **no editar a mano** |
 | `carreras_sies_2026.py` | vigente — catálogo + índices; lo usan v9 y consolidar |
 | `CLAUDE.md` | este documento |
-| `PROTOCOLO_ARCHIVOS.md` | cómo se nombran y ubican archivos y carpetas al trabajar con Claude; vale para todos los proyectos, no solo para este |
 | `.gitignore` | excluye bytecode, checkpoints de Colab, `crudo/` y `maestras/` |
 
 **El diccionario de variables** se genera, no se escribe:
