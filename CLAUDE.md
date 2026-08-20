@@ -79,6 +79,7 @@ Lo que hay en el repo, y nada más:
 | `diccionario.py` | genera `DICCIONARIO.md` desde los datos reales |
 | `variables.py` / `variables.sh` | genera `variables_maestras.html`: las mismas glosas, para consultar mientras se trabaja |
 | `red_areas.py` / `red_areas.sh` | genera `red_areas.html`: qué áreas se piden en el mismo aviso, en tres clasificaciones |
+| `agrupar.py` / `agrupar.sh` | genera `agrupamiento.html`: la estadística de la co-ocurrencia — asociación, agrupamiento y contraste con ISCED |
 | `arquitectura.py` / `arquitectura.sh` | genera `arquitectura.html`: el mapa de archivos del proyecto y sus conexiones |
 | `glosario.py` | las glosas de las columnas, escritas a mano |
 | `DICCIONARIO.md` | generado; **no editar a mano** |
@@ -172,6 +173,50 @@ qué vínculos son entre disciplinas y cuáles se disuelven al agregar. El
 Un código sin nombre no se rellena: la página dice cuál falta en
 `isced_f_2013.csv`. Hoy es `078`.
 
+### `agrupamiento.html` — la co-ocurrencia, medida
+
+`red_areas.html` dibuja la co-ocurrencia; `agrupar.py` la **mide**. Para
+cada par de programas calcula si aparecen juntos más de lo que el azar
+explicaría, arma un agrupamiento jerárquico con esa señal, y lo contrasta
+contra ISCED-F.
+
+La pregunta es **si el mercado agrupa las formaciones como las agrupa la
+taxonomía oficial**. Donde coincide, ISCED describe algo real; donde no,
+hay un hallazgo.
+
+**Tres decisiones que hacen que el número signifique algo:**
+
+- **La base es más chica de lo que parece.** Un aviso con un solo
+  programa no informa nada sobre agrupamiento, y son la mayoría. Y un
+  empleador que repite su plantilla tomó **una** decisión, no cincuenta:
+  cada par (empresa, conjunto) cuenta una vez. Lección 8 aplicada al
+  cálculo, no solo a la lectura. Las dos cifras están arriba de la
+  página.
+- **Contar co-ocurrencias crudas mide frecuencia, no asociación.**
+  `Administración de Empresas` aparece con todo porque aparece mucho.
+  Cada par lleva Jaccard, *lift* y el p del test exacto de Fisher
+  corregido por Benjamini-Hochberg. Con cientos de pares, mirar el p sin
+  corregir garantiza hallazgos falsos.
+- **Un par visto una sola vez no es evidencia**, aunque su Jaccard dé
+  1,00 y su lift el máximo: los dos números son artefactos de que ambos
+  programas aparecen una vez. Quedan fuera de la tabla, contados aparte.
+
+La concordancia con ISCED se reporta con el **índice de Rand ajustado**
+—ajustado y no crudo, porque dos particiones al azar ya coinciden
+bastante— **en todos los cortes de k**. Elegir el k que maximiza la
+concordancia y después reportar esa concordancia como evidencia sería
+circular.
+
+El enlace del agrupamiento es **promedio y no simple**: el simple
+encadena, y un solo par cercano pega dos grupos que no tienen nada que
+ver. El «codo» se busca en `k ≤ n/2`, porque sin esa restricción gana
+siempre una de las últimas fusiones —son las más altas— y el corte sale
+en `k = n−1`, que no agrupa nada.
+
+La estadística está implementada a mano (Fisher, BH, UPGMA, ARI) y
+**verificada contra valores conocidos**: el test de la dama que cata té
+da 0,242857.
+
 ### Dónde queda cada salida
 
 **Las páginas HTML van todas a `<datos>/visualizaciones/`**, junto a los
@@ -227,6 +272,7 @@ cd ~/monitor-mercado-laboral && git pull --no-edit
 ./coocurrencia.sh                          # el dashboard HTML de co-ocurrencia
 ./variables.sh                             # la referencia HTML de variables
 ./red_areas.sh                             # qué áreas se piden juntas
+./agrupar.sh                               # la estadística del agrupamiento
 ./arquitectura.sh                          # el mapa de archivos del proyecto
 ./validar.sh                               # revisa la homologación
 ```
