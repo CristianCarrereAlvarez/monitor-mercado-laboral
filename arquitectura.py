@@ -77,6 +77,7 @@ BANDAS = [
     ("VISUALIZACIONES — Drive/visualizaciones/", [
         ('viz_var', 'variables_maestras.html', '126 columnas con su glosa', 'salida'),
         ('viz_coo', 'coocurrencia_programas.html', 'qué programa se pide con qué', 'salida'),
+        ('viz_red', 'red_areas.html', 'qué áreas se piden juntas', 'salida'),
         ('viz_arq', 'arquitectura.html', 'este diagrama', 'salida'),
     ]),
 ]
@@ -108,6 +109,7 @@ FLECHAS = [
     ('homolog', 'validar', '', 'normal'),
     ('avisos', 'dicc', '', 'suave'),
     ('aviso_prog', 'viz_coo', '', 'fuerte'),
+    ('aviso_prog', 'viz_red', '', 'fuerte'),
     ('dicc', 'viz_var', '', 'normal'),
 ]
 

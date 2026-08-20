@@ -78,6 +78,7 @@ Lo que hay en el repo, y nada más:
 | `coocurrencia.py` / `coocurrencia.sh` | genera `coocurrencia_programas.html`: qué programa se pide junto con qué, y qué nombres de aviso lo alimentan |
 | `diccionario.py` | genera `DICCIONARIO.md` desde los datos reales |
 | `variables.py` / `variables.sh` | genera `variables_maestras.html`: las mismas glosas, para consultar mientras se trabaja |
+| `red_areas.py` / `red_areas.sh` | genera `red_areas.html`: qué áreas se piden en el mismo aviso, en tres clasificaciones |
 | `arquitectura.py` / `arquitectura.sh` | genera `arquitectura.html`: el mapa de archivos del proyecto y sus conexiones |
 | `glosario.py` | las glosas de las columnas, escritas a mano |
 | `DICCIONARIO.md` | generado; **no editar a mano** |
@@ -143,6 +144,34 @@ viejas: `scraper_v7.py`, `scraper_v8.py`, `sonda_detalle.py`,
 `sonda_confidencial.py`. **No se conservaron.** Los hallazgos que
 produjeron están en §5; el código no volvió a hacer falta.
 
+### `red_areas.html` — qué áreas se piden juntas
+
+Dos áreas quedan unidas cuando **un mismo aviso** pide programas de las
+dos. El grosor de la cuerda es cuántos avisos lo hicieron, no cuánta
+demanda hay en ninguna de ellas.
+
+Tres clasificaciones en la misma página. `ISCED amplio` (11) y `ISCED
+estrecho` (29) son **los dos primeros niveles de la misma jerarquía**
+—`0413 ⊂ 041 ⊂ 04`—, así que comparar el gráfico entre los dos muestra
+qué vínculos son entre disciplinas y cuáles se disuelven al agregar. El
+`área SIES` (10) es otra clasificación, no un nivel de la anterior.
+
+**Tres cosas que la página dice y hay que leer antes del dibujo:**
+
+- **Solo los avisos que piden más de un área generan un vínculo, y son
+  una minoría** (11–14% en la corrida de agosto). Un aviso que pide
+  `Ingeniería Comercial` y `Contador Auditor` está pidiendo dos veces
+  `041` y no aporta nada al gráfico.
+- **El área SIES se calcula sobre menos avisos**: solo la traen los
+  programas, no los campos ISCED. No es un defecto, es la consecuencia.
+- **La atribución múltiple se excluye por defecto.** Una entrada que abre
+  a programas de áreas distintas —`Ingeniería de Diseño / Automatización
+  Electrónica` toca `021` y `071`— inventaría por sí sola un vínculo que
+  ningún empleador pidió. El interruptor las suma para ver cuánto cambian.
+
+Un código sin nombre no se rellena: la página dice cuál falta en
+`isced_f_2013.csv`. Hoy es `078`.
+
 ### Dónde queda cada salida
 
 **Las páginas HTML van todas a `<datos>/visualizaciones/`**, junto a los
@@ -197,6 +226,7 @@ cd ~/monitor-mercado-laboral && git pull --no-edit
 ./mirar.sh --buscar metal                  # qué nombres contienen "metal"
 ./coocurrencia.sh                          # el dashboard HTML de co-ocurrencia
 ./variables.sh                             # la referencia HTML de variables
+./red_areas.sh                             # qué áreas se piden juntas
 ./arquitectura.sh                          # el mapa de archivos del proyecto
 ./validar.sh                               # revisa la homologación
 ```
